@@ -16,6 +16,7 @@
 #include "../control/GroundLockController.h"
 #include "../control/GroundReferenceCalibration.h"
 #include "../hardware/StepperTimer.h"
+#include "../hardware/TMC2209Driver.h"
 #include "../hardware/BuzzerDriver.h"
 #include "../communication/TargetManager.h"
 #include "../sensors/SensorHealth.h"
@@ -32,6 +33,8 @@ extern EncoderDriver g_tiltEncoder;
 extern BuzzerDriver g_buzzer;
 extern StepperTimer g_panMotor;
 extern StepperTimer g_tiltMotor;
+extern TMC2209Driver g_panTMC;
+extern TMC2209Driver g_tiltTMC;
 extern TargetManager g_targetMgr;
 extern SensorHealth g_sensorHealth;
 
@@ -542,6 +545,17 @@ void diagnosticsTask(void *params) {//çıktıları okuyup sensor sağlığıın
                     g_sensorHealth.isSensorHealthy(s) ? "OK" : "ARIZA"
                 );
             }
+
+            // TMC2209 surucu sagligi
+            Serial.println("TMC2209 Suruculer:");
+            Serial.printf("  Pan:  %s | Sicaklik: %s | Yuk: %s\n",
+                g_panTMC.getStatus() == TMC2209Driver::STATUS_OK ? "OK" : "HATA",
+                g_panTMC.isOverTemperature() ? "UYARI" : "Normal",
+                g_panTMC.isOpenLoad() ? "ACIK" : "Normal");
+            Serial.printf("  Tilt: %s | Sicaklik: %s | Yuk: %s\n",
+                g_tiltTMC.getStatus() == TMC2209Driver::STATUS_OK ? "OK" : "HATA",
+                g_tiltTMC.isOverTemperature() ? "UYARI" : "Normal",
+                g_tiltTMC.isOpenLoad() ? "ACIK" : "Normal");
 
             // Haberlesme sagligi
             const char* commStatusStr;

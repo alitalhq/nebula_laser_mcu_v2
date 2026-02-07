@@ -9,6 +9,7 @@
 #include "hardware/EncoderDriver.h"
 #include "hardware/SoftI2C.h"
 #include "hardware/StepperTimer.h"
+#include "hardware/TMC2209Driver.h"
 #include "communication/TargetManager.h"
 #include "sensors/SensorHealth.h"
 #include "sensors/SensorCalibration.h"
@@ -22,6 +23,8 @@ SoftI2C g_softI2C_pan(SOFT_I2C_PAN_SDA, SOFT_I2C_PAN_SCL);   // Pan encoder içi
 SoftI2C g_softI2C_tilt(SOFT_I2C_TILT_SDA, SOFT_I2C_TILT_SCL); // Tilt encoder için yazılımsal I2C
 StepperTimer g_panMotor;
 StepperTimer g_tiltMotor;
+TMC2209Driver g_panTMC;
+TMC2209Driver g_tiltTMC;
 TargetManager g_targetMgr; // Hedef konum ve mod yöneticisi
 SensorHealth g_sensorHealth;   // Sensör sağlık durumu izleyicisi
 GroundReferenceCalibration g_groundRef;  // Yerçekimi referans kalibrasyonu
@@ -70,6 +73,28 @@ bool initializeHardware() { //donanımları başlatır
     digitalWrite(STATUS_LED_PIN, LOW);
 
     Serial.println("GPIO yapilandirildi");
+
+    /////////////////////////////////////////////////////////////////////////////////////////
+
+    Serial.println("TMC2209 suruculer baslatiliyor...");
+
+    // PAN TMC2209 - HardwareSerial1 (UART1)
+    if (!g_panTMC.begin(Serial1, TMC_PAN_RX_PIN, TMC_PAN_TX_PIN, "PAN")) {
+        Serial.println("KRITIK HATA: Pan TMC2209 baslatma basarisiz!");
+        Serial.println("  Kablo baglantilarini ve TMC2209 guc beslemesini kontrol edin");
+        return false;
+    }
+    g_panTMC.printStatus();
+    Serial.println("Pan TMC2209 TAMAM");
+
+    // TILT TMC2209 - HardwareSerial2 (UART2)
+    if (!g_tiltTMC.begin(Serial2, TMC_TILT_RX_PIN, TMC_TILT_TX_PIN, "TILT")) {
+        Serial.println("KRITIK HATA: Tilt TMC2209 baslatma basarisiz!");
+        Serial.println("  Kablo baglantilarini ve TMC2209 guc beslemesini kontrol edin");
+        return false;
+    }
+    g_tiltTMC.printStatus();
+    Serial.println("Tilt TMC2209 TAMAM");
 
     /////////////////////////////////////////////////////////////////////////////////////////
 

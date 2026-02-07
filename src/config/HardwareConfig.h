@@ -10,6 +10,23 @@
 #define TILT_DIR_PIN        5   // Tilt motoru yön pini
 #define MOTOR_ENABLE_PIN    6   // Ortak enable pini (LOW = etkin)
 
+// TMC2209 UART Pinleri
+// Her sürücü ayrı HardwareSerial kullanır (MS1/MS2 bağlı değil = adres 0x00)
+#define TMC_PAN_TX_PIN      17  // Pan TMC2209 UART TX pini
+#define TMC_PAN_RX_PIN      18  // Pan TMC2209 UART RX pini
+#define TMC_TILT_TX_PIN     19  // Tilt TMC2209 UART TX pini
+#define TMC_TILT_RX_PIN     20  // Tilt TMC2209 UART RX pini
+#define TMC_UART_BAUD       115200  // TMC2209 UART hızı
+#define TMC_DRIVER_ADDRESS  0x00    // MS1/MS2 bağlı değil = dahili pull-down = 0b00
+
+// TMC2209 Sürücü Parametreleri
+#define TMC_RSENSE          0.11f   // Akım algılama direnci (ohm)
+#define TMC_RMS_CURRENT     1200    // 17HS4401: 1.7A nominal, 1200mA RMS
+#define TMC_MICROSTEPS      32      // Mikro adım (UART ile ayarlanır)
+#define TMC_TPWMTHRS        0       // StealthChop eşiği (0 = her zaman StealthChop)
+#define TMC_IHOLD           16      // Bekleme akımı (0-31, ~%50)
+#define TMC_IHOLDDELAY      6       // Hareket -> bekleme geçiş gecikmesi (0-15)
+
 // Lazer Kontrolü
 #define LASER_PIN           7
 
