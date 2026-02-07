@@ -516,7 +516,7 @@ bool initializeWatchdog() {//watchdog sistem takılmasında otomatik yeniden ba�
 // ============================================================================
 
 void setup() {
-    Serial.begin(SERIAL_BAUD_RATE);
+    Serial.begin(SERIAL_BAUD_RATE, SERIAL_8N1, 44, 43);  // RX=GPIO44, TX=GPIO43 (UART0)
     delay(2000);
 
     Serial.println("\n\n\n");
