@@ -60,12 +60,11 @@
 #define I2C_TIMEOUT_MS      5       // Maksimum bekleme süresi: 5 ms
 
 // Motor Parametreleri
-#define MICROSTEPS              32  // Mikro adım ayarı
 #define STEPS_PER_REVOLUTION    200 // Adım sayısı
 #define REDUCTION_RATIO         1.0f // Redüktör oranı
 
 // Derece başına step sayısı hesaplaması
-#define STEPS_PER_DEGREE        ((STEPS_PER_REVOLUTION * MICROSTEPS * REDUCTION_RATIO) / 360.0f)
+#define STEPS_PER_DEGREE        ((STEPS_PER_REVOLUTION * TMC_MICROSTEPS * REDUCTION_RATIO) / 360.0f)
 
 // Mekanik Limitler
 #define DEFAULT_PAN_MIN         -30.0f   //Mekanik netleşince değerler değişcek
