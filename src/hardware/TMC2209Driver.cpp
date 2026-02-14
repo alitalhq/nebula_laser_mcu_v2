@@ -62,7 +62,7 @@ bool TMC2209Driver::testConnection() {
     uint32_t ioin = _driver->IOIN();
     uint8_t version = (ioin >> 24) & 0xFF;
 
-    if (version == 0x21) {
+    if (version == TMC_DRIVER_ADDRESS) {
         Serial.printf("TMC2209[%s]: Surucu dogrulandi (version=0x%02X)\n", _name, version);
         return true;
     }
