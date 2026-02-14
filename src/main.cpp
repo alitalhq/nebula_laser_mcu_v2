@@ -78,6 +78,15 @@ bool initializeHardware() { //donanımları başlatır
 
     Serial.println("TMC2209 suruculer baslatiliyor...");
 
+    // UART loopback testi (TMC2209 modüllerini sokun, TX-RX pinlerini birbirine baglayin)
+    // Test bittikten sonra bu blogu yorum satiri yapin
+    Serial.println(">>> UART LOOPBACK TESTI BASLIYOR <<<");
+    Serial.println(">>> TMC2209 modullerini SOKUN, TX-RX pinlerini BIRBIRINE BAGLAYIN <<<");
+    delay(1000);
+    TMC2209Driver::uartLoopbackTest(Serial1, TMC_PAN_RX_PIN, TMC_PAN_TX_PIN, "PAN_UART1");
+    TMC2209Driver::uartLoopbackTest(Serial2, TMC_TILT_RX_PIN, TMC_TILT_TX_PIN, "TILT_UART2");
+    Serial.println(">>> UART LOOPBACK TESTI BITTI <<<\n");
+
     // PAN TMC2209 - HardwareSerial1 (UART1)
     if (!g_panTMC.begin(Serial1, TMC_PAN_RX_PIN, TMC_PAN_TX_PIN, "PAN")) {
         Serial.println("KRITIK HATA: Pan TMC2209 baslatma basarisiz!");

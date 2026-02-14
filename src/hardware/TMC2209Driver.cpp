@@ -287,3 +287,83 @@ bool TMC2209Driver::isOpenLoad() {
     uint32_t drvStatus = _driver->DRV_STATUS();
     return (drvStatus & 0x30) != 0; // bit4=ola, bit5=olb
 }
+
+bool TMC2209Driver::uartLoopbackTest(HardwareSerial &serial, uint8_t rxPin, uint8_t txPin, const char* name) {
+    Serial.printf("\n=== UART LOOPBACK TESTI [%s] ===\n", name);
+    Serial.printf("TX=%d, RX=%d, Baud=%d\n", txPin, rxPin, TMC_UART_BAUD);
+    Serial.printf("DIKKAT: TMC2209'u sokun ve TX pinini RX pinine dogrudan baglayin!\n");
+    Serial.printf("(GPIO %d ile GPIO %d arasina kisa kablo)\n\n", txPin, rxPin);
+
+    serial.begin(TMC_UART_BAUD, SERIAL_8N1, rxPin, txPin);
+    delay(50);
+
+    // RX buffer'ini temizle
+    while (serial.available()) serial.read();
+
+    // Test verileri gonder
+    const uint8_t testData[] = {0x05, 0x00, 0x06, 0xA1, 0x55};
+    const int testLen = sizeof(testData);
+    int successCount = 0;
+
+    for (int round = 0; round < 3; round++) {
+        // Gonder
+        for (int i = 0; i < testLen; i++) {
+            serial.write(testData[i]);
+        }
+        serial.flush(); // Gonderme tamamlanana kadar bekle
+        delay(10);
+
+        // Oku
+        uint8_t received[16] = {0};
+        int rxCount = 0;
+        unsigned long start = millis();
+        while (rxCount < testLen && (millis() - start) < 100) {
+            if (serial.available()) {
+                received[rxCount++] = serial.read();
+            }
+        }
+
+        // Karsilastir
+        bool match = (rxCount == testLen);
+        if (match) {
+            for (int i = 0; i < testLen; i++) {
+                if (received[i] != testData[i]) {
+                    match = false;
+                    break;
+                }
+            }
+        }
+
+        Serial.printf("  Deneme %d: Gonderilen=%d bayt, Alinan=%d bayt -> %s\n",
+                      round + 1, testLen, rxCount, match ? "BASARILI" : "BASARISIZ");
+
+        if (!match && rxCount > 0) {
+            Serial.printf("    Gonderilen: ");
+            for (int i = 0; i < testLen; i++) Serial.printf("0x%02X ", testData[i]);
+            Serial.printf("\n    Alinan:     ");
+            for (int i = 0; i < rxCount; i++) Serial.printf("0x%02X ", received[i]);
+            Serial.printf("\n");
+        } else if (rxCount == 0) {
+            Serial.printf("    Hic veri alinamadi! Pin atamasi yanlis olabilir.\n");
+        }
+
+        if (match) successCount++;
+
+        // Buffer temizle
+        while (serial.available()) serial.read();
+        delay(20);
+    }
+
+    serial.end();
+
+    Serial.printf("\nSONUC: %d/3 basarili\n", successCount);
+    if (successCount == 3) {
+        Serial.printf("  -> ESP32 UART bu pinlerde CALISIYOR. Sorun TMC2209 baglantisinda.\n");
+    } else if (successCount == 0) {
+        Serial.printf("  -> ESP32 UART bu pinlerde CALISMIYOR!\n");
+        Serial.printf("  -> Pin atamasini kontrol edin veya farkli pinleri deneyin.\n");
+    }
+    Serial.printf("=== LOOPBACK TESTI BITTI ===\n\n");
+
+    return successCount == 3;
+}

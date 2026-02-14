@@ -33,6 +33,10 @@ private:
 
     bool configure();
     bool verifyConfiguration();
+
+public:
+    // UART loopback testi: TX ve RX pinlerini birbirine bagla (TMC2209'u sok)
+    static bool uartLoopbackTest(HardwareSerial &serial, uint8_t rxPin, uint8_t txPin, const char* name);
 };
 
 #endif
