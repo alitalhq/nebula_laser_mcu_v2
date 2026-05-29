@@ -9,19 +9,26 @@
 class SerialProtocol {
 public:
 
+    // Komut modu sabitleri
+    static constexpr uint8_t GIMBAL_MODE_GROUND_LOCK = 0; // Yer kilit (0°/0°)
+    static constexpr uint8_t GIMBAL_MODE_TRACKING    = 1; // ROS2 delta takibi
+    static constexpr uint8_t GIMBAL_MODE_JOYSTICK    = 2; // Joystick hiz kontrolu
+
     struct GimbalCommand {
-        float pan_delta;            // Pan aci degisimi (derece)
-        float tilt_delta;           // Tilt aci degisimi (derece)
-        float feedforward_vel_pan;  // Pan ileri besleme hizi (derece/saniye)
-        float feedforward_vel_tilt; // Tilt ileri besleme hizi (derece/saniye)
+        float pan_delta;            // Pan aci degisimi (derece) — TRACKING modunda kullanilir
+        float tilt_delta;           // Tilt aci degisimi (derece) — TRACKING modunda kullanilir
+        float feedforward_vel_pan;  // Pan hizi (derece/saniye) — JOYSTICK modunda kullanilir
+        float feedforward_vel_tilt; // Tilt hizi (derece/saniye) — JOYSTICK modunda kullanilir
         bool laser_enable;          // Lazer etkin mi?
         bool laser_fire;            // Lazer ates et
+        uint8_t mode;               // Gimbal modu (GIMBAL_MODE_*)
         uint32_t timestamp_ms;      // Komut alinma zamani (milisaniye)
 
         GimbalCommand()
             : pan_delta(0), tilt_delta(0)
             , feedforward_vel_pan(0), feedforward_vel_tilt(0)
             , laser_enable(false), laser_fire(false)
+            , mode(GIMBAL_MODE_GROUND_LOCK)
             , timestamp_ms(0) {}
     };
 
@@ -64,7 +71,7 @@ private:
     bool validateHeaders(const uint8_t *buffer);
 
     // Paket boyutlari
-    static constexpr size_t COMMAND_PACKET_SIZE = 22;    // Komut paketi boyutu
+    static constexpr size_t COMMAND_PACKET_SIZE = 24;    // Komut paketi boyutu
     static constexpr size_t TELEMETRY_PACKET_SIZE = 32;  // Telemetri paketi boyutu
 };
 

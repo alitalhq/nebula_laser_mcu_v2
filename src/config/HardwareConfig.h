@@ -11,16 +11,17 @@
 #define MOTOR_ENABLE_PIN    6   // Ortak enable pini (LOW = etkin)
 
 // TMC2209 UART Pinleri
-// Her sürücü ayrı HardwareSerial kullanır (MS1/MS2 bağlı değil = adres 0x00)
-#define TMC_PAN_TX_PIN      17  // Pan TMC2209 UART TX pini
-#define TMC_PAN_RX_PIN      18  // Pan TMC2209 UART RX pini
-#define TMC_TILT_TX_PIN     19  // Tilt TMC2209 UART TX pini
-#define TMC_TILT_RX_PIN     20  // Tilt TMC2209 UART RX pini
-#define TMC_UART_BAUD       115200  // TMC2209 UART hızı
-#define TMC_DRIVER_ADDRESS  0x00    // MS1/MS2 bağlı değil = dahili pull-down = 0b00
+// Breadboard: 17/18 (PAN), 19/20 (TILT)
+// PCB gelince: PAN=47/48, TILT=45/46 olarak güncelle
+#define TMC_PAN_TX_PIN      17
+#define TMC_PAN_RX_PIN      18
+#define TMC_TILT_TX_PIN     19
+#define TMC_TILT_RX_PIN     20
+#define TMC_UART_BAUD       115200
+#define TMC_DRIVER_ADDRESS  0x01    // MS1=3V3, MS2=GND → adres 1 (düzeltildi, eskisi 0x00)
 
 // TMC2209 Sürücü Parametreleri
-#define TMC_RSENSE          0.11f   // Akım algılama direnci (ohm)
+#define TMC_RSENSE          0.22f   // PCB R5=0.22Ω (düzeltildi, eskisi 0.11f)
 #define TMC_RMS_CURRENT     1200    // 17HS4401: 1.7A nominal, 1200mA RMS
 #define TMC_MICROSTEPS      32      // Mikro adım (UART ile ayarlanır)
 #define TMC_TPWMTHRS        0       // StealthChop eşiği (0 = her zaman StealthChop)
@@ -77,7 +78,7 @@
 #define SERIAL_BAUD_RATE        921600
 #define PACKET_HEADER1          0xAA    // Header 1
 #define PACKET_HEADER2          0xFF    // Header 2
-#define PACKET_SIZE             22
+#define PACKET_SIZE             24
 
 // Kontrol Döngüsü Frekansları
 #define IMU_READ_FREQ_HZ        1000
@@ -103,7 +104,7 @@
 #define STABILIZATION_TASK_STACK    4096
 #define POSITION_TASK_STACK         4096
 #define SERIAL_TASK_STACK           3072
-#define DIAGNOSTICS_TASK_STACK      2048
+#define DIAGNOSTICS_TASK_STACK      5120
 
 // Çekirdek atamaları
 // Çekirdek 0: Zaman-kritik görevler (IMU, stabilizasyon, konum)

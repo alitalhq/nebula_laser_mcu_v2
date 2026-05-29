@@ -82,6 +82,15 @@ struct SharedSensorData {
     float encoderPan;    // Pan encoder konumu [0, 360)
     float encoderTilt;   // Tilt encoder konumu [0, 360)
 
+    // Head IMU ham gyro hizlari (deg/s) — dogrudan sönümleme için
+    float headGyroX;   // roll hizi  (pan ekseni)
+    float headGyroY;   // pitch hizi (tilt ekseni)
+
+    // Body IMU ham gyro hizlari (deg/s) — pan/tilt feedforward için
+    float bodyGyroX;   // roll hizi  (pan ekseni)
+    float bodyGyroY;   // pitch hizi (tilt ekseni)
+    float bodyGyroZ;   // yaw hizi   (kullanilmiyor)
+
     // Encoder hizlari (derece/saniye)
     // Filtrelenmis degerler (gurultu azaltilmis)
     float encoderVelPan;

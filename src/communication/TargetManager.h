@@ -11,8 +11,9 @@ class TargetManager {
 public:
 
     enum Mode {
-        MODE_GROUND_LOCK = 0,   // Varsayilan: Yere bak (guvenli mod)
-        MODE_TRACKING = 1       // ROS2'den gelen hedefi takip et
+        MODE_GROUND_LOCK = 0,   // Varsayilan: Yer kilit (0°/0°)
+        MODE_TRACKING    = 1,   // ROS2 delta takibi (target = currentPos + delta)
+        MODE_JOYSTICK    = 2    // Joystick hiz kontrolu (target = currentPos, ff = vel)
     };
 
     enum CommStatus {
@@ -29,7 +30,8 @@ public:
 
     void setGroundLockTarget(float pan, float tilt);
 
-    void getTargets(float &pan, float &tilt, float &ffPan, float &ffTilt);
+    void getTargets(float currentWorldPan, float currentWorldTilt,
+                    float &pan, float &tilt, float &ffPan, float &ffTilt);
 
     void setTarget(float pan, float tilt);
 
@@ -53,8 +55,8 @@ private:
     Mode _mode;
     CommStatus _commStatus;
 
-    float _targetPan, _targetTilt;
-    float _feedforwardPan, _feedforwardTilt;
+    float _latestDeltaPan, _latestDeltaTilt;    // Son TRACKING deltasi
+    float _feedforwardPan, _feedforwardTilt;    // JOYSTICK hiz komutu
     float _groundLockPan, _groundLockTilt;
 
     uint32_t _lastCommandTime;

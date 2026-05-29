@@ -128,6 +128,13 @@ void imuReadTask(void *params) { //IMU okuma görevi
             g_sensorData.headPitch = headOri.pitch;
             g_sensorData.headYaw = headOri.yaw;
 
+            // Ham gyro hizlari — dogrudan sönümleme ve feedforward için
+            g_sensorData.headGyroX = imuData.headData.gyro_x;   // roll rate → pan ekseni
+            g_sensorData.headGyroY = imuData.headData.gyro_y;   // pitch rate → tilt ekseni
+            g_sensorData.bodyGyroX = imuData.bodyData.gyro_x;   // roll rate → pan ekseni
+            g_sensorData.bodyGyroY = imuData.bodyData.gyro_y;   // pitch rate → tilt ekseni
+            g_sensorData.bodyGyroZ = imuData.bodyData.gyro_z;   // yaw rate
+
             g_sensorData.deltaIMUPan = deltaIMUPan;
             g_sensorData.deltaIMUTilt = deltaIMUTilt;
             g_sensorData.imuTimestamp = micros();
@@ -176,31 +183,34 @@ void stabilizationTask(void *params) {//stabilizasyon görevi
         vTaskDelayUntil(&lastWakeTime, period);
         loopCount++;
 
-        IMUFusion::Orientation bodyOri, headOri;//imu verisi okuunr
+        IMUFusion::Orientation bodyOri, headOri;
         float encoderVelPan = 0, encoderVelTilt = 0;
-
-
+        float bodyGyroPan = 0.0f, bodyGyroTilt = 0.0f;
 
         if (xSemaphoreTake(g_sensorData.mutex, pdMS_TO_TICKS(1)) == pdTRUE) {
-            bodyOri.roll = g_sensorData.bodyRoll;
+            bodyOri.roll  = g_sensorData.bodyRoll;
             bodyOri.pitch = g_sensorData.bodyPitch;
-            bodyOri.yaw = g_sensorData.bodyYaw;
+            bodyOri.yaw   = g_sensorData.bodyYaw;
 
-            headOri.roll = g_sensorData.headRoll;
+            headOri.roll  = g_sensorData.headRoll;
             headOri.pitch = g_sensorData.headPitch;
-            headOri.yaw = g_sensorData.headYaw;
+            headOri.yaw   = g_sensorData.headYaw;
 
-            encoderVelPan = g_sensorData.encoderVelPan;
+            encoderVelPan  = g_sensorData.encoderVelPan;
             encoderVelTilt = g_sensorData.encoderVelTilt;
+            bodyGyroPan    = g_sensorData.bodyGyroX;   // roll rate  → pan ekseni
+            bodyGyroTilt   = g_sensorData.bodyGyroY;   // pitch rate → tilt ekseni
 
             xSemaphoreGive(g_sensorData.mutex);
         }
 
-        stabCtrl.update(//kontrolcü güncellenir
+        stabCtrl.update(
             bodyOri,
             headOri,
             encoderVelPan,
             encoderVelTilt,
+            bodyGyroPan,
+            bodyGyroTilt,
             STABILIZATION_PERIOD_MS / 1000.0f
         );
 
@@ -248,6 +258,18 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
     uint32_t lastPrintTime = 0;
     uint32_t lastWdtFeedTime = 0;
 
+    // ── Gimbal mod yönetimi ───────────────────────────────────────────
+    // LEVELING: yere paralel konuma getir, encoder sıfırını kaydet
+    // STABILIZE: level sıfırını koru (0°, 0°)
+    // TARGET: ROS2 komutuna git
+    enum GimbalMode : uint8_t { MODE_LEVELING, MODE_STABILIZE, MODE_TARGET };
+    GimbalMode gimbalMode = MODE_LEVELING;
+
+    uint32_t levelStableStart = 0;  // kararlı seviyeleme başlangıcı
+    uint32_t levelingStart    = millis();
+
+    Serial.println("[POS] LEVELING modunda — yere paralel konuma getiriliyor...");
+
     while (true) {
         vTaskDelayUntil(&lastWakeTime, period);
         loopCount++;
@@ -268,41 +290,76 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
         panFilter.addSample(rawPan, timestamp);
         tiltFilter.addSample(rawTilt, timestamp);
 
-        float encoderPan = panFilter.getFiltered();
-        float encoderTilt = tiltFilter.getFiltered();
-        float encoderVelPan = panFilter.getVelocity();
+        float encoderPan     = panFilter.getFiltered();
+        float encoderTilt    = tiltFilter.getFiltered();
+        float encoderVelPan  = panFilter.getVelocity();
         float encoderVelTilt = tiltFilter.getVelocity();
 
-
-        float deltaIMUPan = 0, deltaIMUTilt = 0;//imu verisi ve deltayı al
-        IMUFusion::Orientation bodyOri;
+        float headPitch = 0.0f, headRoll = 0.0f;
+        float headGyroX = 0.0f, headGyroY = 0.0f;
+        float deltaIMUPan = 0.0f, deltaIMUTilt = 0.0f;
 
         if (xSemaphoreTake(g_sensorData.mutex, pdMS_TO_TICKS(1)) == pdTRUE) {
-            deltaIMUPan = g_sensorData.deltaIMUPan;
+            headPitch    = g_sensorData.headPitch;
+            headRoll     = g_sensorData.headRoll;
+            headGyroX    = g_sensorData.headGyroX;
+            headGyroY    = g_sensorData.headGyroY;
+            deltaIMUPan  = g_sensorData.deltaIMUPan;
             deltaIMUTilt = g_sensorData.deltaIMUTilt;
 
-            bodyOri.roll = g_sensorData.bodyRoll;
-            bodyOri.pitch = g_sensorData.bodyPitch;
-            bodyOri.yaw = g_sensorData.bodyYaw;
-
-            g_sensorData.encoderPan = encoderPan;
-            g_sensorData.encoderTilt = encoderTilt;
-            g_sensorData.encoderVelPan = encoderVelPan;
-            g_sensorData.encoderVelTilt = encoderVelTilt;
+            g_sensorData.encoderPan       = encoderPan;
+            g_sensorData.encoderTilt      = encoderTilt;
+            g_sensorData.encoderVelPan    = encoderVelPan;
+            g_sensorData.encoderVelTilt   = encoderVelTilt;
             g_sensorData.encoderTimestamp = timestamp;
 
             xSemaphoreGive(g_sensorData.mutex);
         }
 
-        float groundLockPan, groundLockTilt; // yer kilit hedefini günceller
-        groundLockCtrl.computeGroundLockTarget(bodyOri, groundLockPan, groundLockTilt);
-        g_targetMgr.setGroundLockTarget(groundLockPan, groundLockTilt);
+        // ── Dünya referanslı konum ────────────────────────────────────
+        // Her iki eksen de head IMU'nun yerçekimi referanslı açısını direkt kullanır.
+        // headPitch = 0° → yatay (tilt), headRoll = 0° → yatay (pan)
+        float currentWorldTilt = headPitch;
+        float currentWorldPan  = headRoll;
 
-        float currentWorldPan = encoderPan + deltaIMUPan; // dünya referanslı pozisyon hesabı
-        float currentWorldTilt = encoderTilt + deltaIMUTilt;
-
+        // ── Gimbal mod state machine ──────────────────────────────────
         float targetPan, targetTilt, ffPan, ffTilt;
-        g_targetMgr.getTargets(targetPan, targetTilt, ffPan, ffTilt);
+
+        if (gimbalMode == MODE_LEVELING) {
+            targetTilt = 0.0f;
+            targetPan  = 0.0f;
+            ffPan = 0.0f; ffTilt = 0.0f;
+
+            bool pitchOK = fabsf(headPitch) < 1.5f;
+            bool rollOK  = fabsf(headRoll)  < 2.5f;
+
+            if (pitchOK && rollOK) {
+                if (levelStableStart == 0) levelStableStart = millis();
+                if (millis() - levelStableStart >= 1000) {
+                    posCtrl.resetIntegral();
+                    g_targetMgr.setGroundLockTarget(0.0f, 0.0f);
+                    gimbalMode = MODE_STABILIZE;
+                    Serial.printf("[LEVELING] Tamamlandi — Pitch=%.1f Roll=%.1f\n", headPitch, headRoll);
+                }
+            } else {
+                levelStableStart = 0;
+            }
+
+            // 15 saniye zaman aşımı: ne olursa olsun devam et
+            if (millis() - levelingStart >= 15000) {
+                posCtrl.resetIntegral();
+                g_targetMgr.setGroundLockTarget(0.0f, 0.0f);
+                gimbalMode = MODE_STABILIZE;
+                Serial.printf("[LEVELING] Zaman asimi — Pitch=%.1f Roll=%.1f\n", headPitch, headRoll);
+            }
+
+        } else {
+            // STABILIZE veya TARGET — TargetManager'a bırak
+            bool ros2Active = (g_targetMgr.getMode() != TargetManager::MODE_GROUND_LOCK)
+                           && g_targetMgr.isCommHealthy();
+            gimbalMode = ros2Active ? MODE_TARGET : MODE_STABILIZE;
+            g_targetMgr.getTargets(currentWorldPan, currentWorldTilt, targetPan, targetTilt, ffPan, ffTilt);
+        }
 
         posCtrl.update(//kontrolcü güncellenir
             targetPan,
@@ -328,8 +385,16 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
             POSITION_PERIOD_MS / 1000.0f
         );
 
-        float finalVelPan = combiner.getFinalVelocityPan();
+        float finalVelPan  = combiner.getFinalVelocityPan();
         float finalVelTilt = combiner.getFinalVelocityTilt();
+
+        // Head IMU gyro ile doğrudan sönümleme (v3 mantığı)
+        // stabCtrl'in feedforward'u body-head farkına bakar ama burada
+        // anlık head angular velocity doğrudan fren olarak eklenir.
+        static constexpr float KD_PAN_GYRO  = 0.1f;   // [TUNING adim 3]
+        static constexpr float KD_TILT_GYRO = 0.1f;   // [TUNING adim 3]
+        finalVelPan  -= KD_PAN_GYRO  * headGyroX;
+        finalVelTilt -= KD_TILT_GYRO * headGyroY;
 
         limiter.enforce(
             encoderPan,
@@ -372,18 +437,14 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
             float errorPan, errorTilt;
             posCtrl.getError(errorPan, errorTilt);
 
-            TargetManager::Mode mode = g_targetMgr.getMode();
-            const char* modeStr = (mode == TargetManager::MODE_GROUND_LOCK) ? "YER_KILIT" : "TAKIP";
+            const char* modeStr = (gimbalMode == MODE_LEVELING)  ? "LEVELING"  :
+                                  (gimbalMode == MODE_STABILIZE) ? "STABILIZE" : "TARGET";
 
-            const char* commStr = g_targetMgr.isCommHealthy() ? "OK" : "ZAMANASIMI";
-
-            Serial.printf("[POS] Hiz: %d Hz | Mod: %s | Hab: %s | Enc: P=%.1f T=%.1f | Hedef: P=%.1f T=%.1f | Hata: P=%.2f T=%.2f\n",
-                loopCount,
+            Serial.printf("[POS] %s | tilt: world=%.1f tgt=%.1f err=%.2f | pan: world=%.1f tgt=%.1f err=%.2f vel: P=%.1f T=%.1f\n",
                 modeStr,
-                commStr,
-                encoderPan, encoderTilt,
-                targetPan, targetTilt,
-                errorPan, errorTilt
+                currentWorldTilt, targetTilt, errorTilt,
+                currentWorldPan,  targetPan,  errorPan,
+                finalVelPan, finalVelTilt
             );
 
             loopCount = 0;
@@ -493,21 +554,40 @@ void diagnosticsTask(void *params) {//çıktıları okuyup sensor sağlığıın
         vTaskDelay(pdMS_TO_TICKS(100));  // 10 Hz
 
         if (g_sensorHealth.shouldEnterSafeMode()) {
-            Serial.println("\n!!!!! KRITIK: GUVENLI MODA GECILIYOR !!!!!");
+            Serial.print("\n!!!!! KRITIK: GUVENLI MODA GECILIYOR — Sagliksiz: ");
+            for (int i = 0; i < SensorHealth::SENSOR_COUNT; i++) {
+                SensorHealth::Sensor s = (SensorHealth::Sensor)i;
+                if (!g_sensorHealth.isSensorHealthy(s)) {
+                    Serial.printf("[%s] ", g_sensorHealth.getSensorName(s));
+                }
+            }
+            Serial.println("!!!!!");
 
             g_targetMgr.forceGroundLock();
-
             g_panMotor.disable();
             g_tiltMotor.disable();
             digitalWrite(MOTOR_ENABLE_PIN, HIGH);
 
-            while (true) {
-                g_buzzer.errorAlert();//hata sesi çıkarır
-
+            // Sensörler düzelene kadar bekle (maks 10 saniye), sonra yeniden dene
+            uint32_t safeEntry = millis();
+            while (g_sensorHealth.shouldEnterSafeMode()) {
+                g_buzzer.errorAlert();
                 digitalWrite(STATUS_LED_PIN, HIGH);
                 vTaskDelay(pdMS_TO_TICKS(200));
                 digitalWrite(STATUS_LED_PIN, LOW);
                 vTaskDelay(pdMS_TO_TICKS(200));
+
+                if (millis() - safeEntry > 3000) {
+                    // 3 saniye sonra sağlık sayaçlarını sıfırla ve kurtarmayı dene
+                    g_sensorHealth.reset();
+                    Serial.println("SENSOR SAGLIGI: Sayaclar sifirlandı, kurtarma deneniyor");
+                    break;
+                }
+            }
+
+            if (!g_sensorHealth.shouldEnterSafeMode()) {
+                Serial.println("SENSOR SAGLIGI: Kurtarma basarili - motorlar yeniden etkinlestiriliyor");
+                digitalWrite(MOTOR_ENABLE_PIN, LOW);
             }
         }
 
@@ -572,8 +652,13 @@ void diagnosticsTask(void *params) {//çıktıları okuyup sensor sağlığıın
             Serial.printf("  Alinan komut: %u\n", g_targetMgr.getCommandCount());
             Serial.printf("  Zaman asimi: %u\n", g_targetMgr.getTimeoutCount());
 
-            const char* modeStr = (g_targetMgr.getMode() == TargetManager::MODE_GROUND_LOCK)
-                                  ? "YER_KILIT" : "TAKIP";
+            const char* modeStr;
+            switch (g_targetMgr.getMode()) {
+                case TargetManager::MODE_GROUND_LOCK: modeStr = "YER_KILIT"; break;
+                case TargetManager::MODE_TRACKING:    modeStr = "TAKIP";     break;
+                case TargetManager::MODE_JOYSTICK:    modeStr = "JOYSTICK";  break;
+                default:                              modeStr = "BILINMIYOR"; break;
+            }
             Serial.printf("Mod: %s\n", modeStr);
 
             Serial.printf("Bos heap: %u byte\n", ESP.getFreeHeap());

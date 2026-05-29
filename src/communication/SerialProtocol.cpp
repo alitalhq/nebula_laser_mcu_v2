@@ -14,9 +14,9 @@ bool SerialProtocol::parsePacket(const uint8_t *buffer, size_t len, GimbalComman
         return false;
     }
 
-    uint16_t receivedCRC = (buffer[21] << 8) | buffer[20];
+    uint16_t receivedCRC = (uint16_t)buffer[22] | ((uint16_t)buffer[23] << 8);
 
-    uint16_t calculatedCRC = calculateCRC16(buffer, 20);
+    uint16_t calculatedCRC = calculateCRC16(buffer, 22);
 
     if (receivedCRC != calculatedCRC) {
         Serial.printf("CRC uyusmazligi: alinan 0x%04X, hesaplanan 0x%04X\n",
@@ -39,6 +39,9 @@ bool SerialProtocol::parsePacket(const uint8_t *buffer, size_t len, GimbalComman
     cmd.laser_enable = buffer[18];
 
     cmd.laser_fire = buffer[19];
+
+    // Mod: byte 20 (byte 21 rezerve)
+    cmd.mode = buffer[20];
 
     // Zaman damgasi: paketin alindigi an
     cmd.timestamp_ms = millis();
