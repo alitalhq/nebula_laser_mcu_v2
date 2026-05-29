@@ -3,6 +3,7 @@
 PositionController::PositionController()
     : _integralPan(0), _integralTilt(0)
     , _lastErrorPan(0), _lastErrorTilt(0)
+    , _filteredDerivPan(0), _filteredDerivTilt(0)
     , _errorPan(0), _errorTilt(0)
 {
 }
@@ -27,44 +28,36 @@ void PositionController::update(
     }
 
     _errorPan  = MathUtils::angularError(worldTargetPan, currentWorldPan);
-
     _errorTilt = MathUtils::angularError(worldTargetTilt, currentWorldTilt);
 
-    float effectiveErrorPan  = isInDeadZone(_errorPan)  ? 0.0f : _errorPan;
-
-    float effectiveErrorTilt = isInDeadZone(_errorTilt) ? 0.0f : _errorTilt;
+    float effectiveErrorPan  = (fabsf(_errorPan)  < _cfg.deadzone_pan)  ? 0.0f : _errorPan;
+    float effectiveErrorTilt = (fabsf(_errorTilt) < _cfg.deadzone_tilt) ? 0.0f : _errorTilt;
 
     if (effectiveErrorPan == 0.0f) {
         _integralPan = 0.0f;
+        _filteredDerivPan = 0.0f;
     }
     if (effectiveErrorTilt == 0.0f) {
         _integralTilt = 0.0f;
+        _filteredDerivTilt = 0.0f;
     }
 
-    float velCmdPan = computePI(
+    float velCmdPan = computePID(
         effectiveErrorPan,
-        _integralPan,
-        _cfg.kp_pan,
-        _cfg.ki_pan,
-        _cfg.i_max_pan,
+        _integralPan, _lastErrorPan, _filteredDerivPan,
+        _cfg.kp_pan, _cfg.ki_pan, _cfg.kd_pan, _cfg.i_max_pan,
         dt
     );
 
-    float velCmdTilt = computePI(
+    float velCmdTilt = computePID(
         effectiveErrorTilt,
-        _integralTilt,
-        _cfg.kp_tilt,
-        _cfg.ki_tilt,
-        _cfg.i_max_tilt,
+        _integralTilt, _lastErrorTilt, _filteredDerivTilt,
+        _cfg.kp_tilt, _cfg.ki_tilt, _cfg.kd_tilt, _cfg.i_max_tilt,
         dt
     );
 
     _velCmdPan.store(velCmdPan);
-
     _velCmdTilt.store(velCmdTilt);
-
-    _lastErrorPan = _errorPan;
-    _lastErrorTilt = _errorTilt;
 }
 
 float PositionController::getVelocityCommandPan() const {
@@ -94,30 +87,37 @@ void PositionController::reset() {
     _integralTilt = 0.0f;
     _lastErrorPan = 0.0f;
     _lastErrorTilt = 0.0f;
+    _filteredDerivPan = 0.0f;
+    _filteredDerivTilt = 0.0f;
     _errorPan = 0.0f;
     _errorTilt = 0.0f;
     _velCmdPan.store(0.0f);
     _velCmdTilt.store(0.0f);
 }
 
-float PositionController::computePI(
+float PositionController::computePID(
     float error,
     float &integral,
-    float kp,
-    float ki,
+    float &lastError,
+    float &filteredDeriv,
+    float kp, float ki, float kd,
     float iMax,
     float dt
 )
 {
-
     float pTerm = kp * error;
 
     integral += ki * error * dt;
     integral = MathUtils::clamp(integral, -iMax, iMax);
 
-    return pTerm + integral;
+    // Türev: gürültü amplifikasyonunu önlemek için düşük geçiren filtreden geçirilir
+    float rawDeriv = (error - lastError) / dt;
+    const float derivAlpha = 0.15f;
+    filteredDeriv = derivAlpha * rawDeriv + (1.0f - derivAlpha) * filteredDeriv;
+    float dTerm = kd * filteredDeriv;
+
+    lastError = error;
+
+    return pTerm + integral + dTerm;
 }
 
-bool PositionController::isInDeadZone(float error) const {
-    return fabsf(error) < _cfg.deadzone;
-}

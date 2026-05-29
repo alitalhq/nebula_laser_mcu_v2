@@ -9,6 +9,8 @@ public:
 
     bool begin(uint32_t frequency = 100000);
 
+    void recover();
+
     bool beginTransmission(uint8_t address);
 
     bool write(uint8_t data);

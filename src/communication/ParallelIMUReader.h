@@ -76,7 +76,7 @@ private:
     static void headReadTaskFunc(void *param);
 
     // Gorev yapilandirmasi
-    static constexpr uint32_t TASK_STACK_SIZE = 2048;   // Gorev yigin boyutu (byte)
+    static constexpr uint32_t TASK_STACK_SIZE = 4096;   // Gorev yigin boyutu (byte)
     static constexpr UBaseType_t TASK_PRIORITY = 7;     // Yuksek oncelik (0-24)
     static constexpr BaseType_t TASK_CORE = 0;          // Core 0: zaman-kritik isler
 };

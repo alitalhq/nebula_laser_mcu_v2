@@ -8,16 +8,11 @@ struct StabilizationConfig {
     // İleri besleme kazançları
     // Gövde açısal hızının ne kadarının doğrudan telafi edileceğini belirler
     // 1.0 = tam telafi, 0.0 = telafi yok
-    float k_feedforward_pan  = 0.90f;   // Pan ekseni ileri besleme kazancı
+    float k_feedforward_pan  = 0.9f;    // [TUNING adim 4] baslangic: 0
+    float k_feedforward_tilt = 0.9f;    // [TUNING adim 4] baslangic: 0
 
-    float k_feedforward_tilt = 0.90f;   // Tilt ekseni ileri besleme kazancı
-
-    // Sönümleme kazançları
-    // Kafa açısal hızına orantılı fren uygular
-    // Aşırı salınımı ve overshoot'u önler
-    float k_damping_pan      = 0.15f;   // Pan ekseni sönümleme kazancı
-
-    float k_damping_tilt     = 0.15f;   // Tilt ekseni sönümleme kazancı
+    float k_damping_pan      = 0.0f;    // [TUNING adim 3] baslangic: 0
+    float k_damping_tilt     = 0.0f;    // [TUNING adim 3] baslangic: 0
 
     // Jiroskop düşük geçiren filtre kesim frekansı (Hz)
     // Gürültüyü azaltır ancak gecikme ekler
@@ -29,31 +24,27 @@ struct StabilizationConfig {
 struct PositionConfig {
     // Oransal kazançlar (Kp)
     // Hata ne kadar büyükse, düzeltme o kadar güçlü
-    float kp_pan    = 2.0f;     // Pan ekseni oransal kazancı
+    float kp_pan    = 20.0f;     // [TUNING adim 1]
+    float ki_pan    = 0.0f;     // [TUNING adim 5] simdilik sifir
+    float kd_pan    = 5.5f;     // [TUNING adim 2] simdilik sifir
+    float i_max_pan = 10.0f;
 
-    float ki_pan    = 0.1f;     // Pan ekseni integral kazancı
+    float kp_tilt    = 13.0f;    //13 [TUNING adim 1]
+    float ki_tilt    = 0.0f;    // [TUNING adim 5] simdilik sifir
+    float kd_tilt    = 4.5f;    //4.5 [TUNING adim 2] simdilik sifir
+    float i_max_tilt = 10.0f;
 
-    float i_max_pan = 10.0f;    // Pan integral sınırı (derece/s)
-
-    // Tilt ekseni genellikle daha fazla atalete sahiptir
-    float kp_tilt    = 2.5f;    // Tilt ekseni oransal kazancı
-
-    float ki_tilt    = 0.12f;   // Tilt ekseni integral kazancı
-
-    float i_max_tilt = 10.0f;   // Tilt integral sınırı (derece/s)
-
-    // Ölü bölge (hedef yakınında titreşimi önler)
-    // Bu değerden küçük hatalar göz ardı edilir
-    float deadzone = 0.1f;      // derece
+    float deadzone_pan  = 1.5f;  // derece
+    float deadzone_tilt = 1.5f;  //0.7 derece
 };
 
 // CommandCombiner parametreleri
 struct CombinerConfig {
     // Hız limitleri (derece/saniye)
     // Motor ve mekanik sistemin güvenli çalışma sınırları
-    float max_velocity_pan  = 100.0f;   // Pan maksimum hız
+    float max_velocity_pan  = 200.0f;   // Pan maksimum hız
 
-    float max_velocity_tilt = 80.0f;    // Tilt maksimum hız
+    float max_velocity_tilt = 200.0f;    // Tilt maksimum hız
 
     // İvme limitleri (derece/saniye²) - step kaybını önler
     // Çok hızlı ivme değişimleri motorun adım kaçırmasına neden olabilir

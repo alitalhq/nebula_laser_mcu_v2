@@ -45,7 +45,7 @@ private:
 
     SensorStatus _sensors[SENSOR_COUNT];
 
-    static constexpr uint32_t FAILURE_THRESHOLD = 10;
+    static constexpr uint32_t FAILURE_THRESHOLD = 2000;
 
     static constexpr float MIN_RELIABILITY = 0.80f;
 };

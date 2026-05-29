@@ -20,6 +20,7 @@ public:
     bool testConnection();
 
     DriverStatus getStatus() const { return _status; }
+    bool isUartOk() const { return _uartOk; }
     void printStatus();
     bool isOverTemperature();
     bool isOpenLoad();
@@ -29,6 +30,7 @@ public:
 private:
     TMC2209Stepper* _driver;
     DriverStatus _status;
+    bool _uartOk;
     const char* _name;
 
     bool configure();

@@ -18,6 +18,8 @@ public:
         const IMUFusion::Orientation &headOri,
         float encoderVelPan,
         float encoderVelTilt,
+        float bodyGyroPan,   // roll rate  → pan ekseni
+        float bodyGyroTilt,  // pitch rate → tilt ekseni
         float dt
     );
 
@@ -34,18 +36,11 @@ public:
 private:
     StabilizationConfig _cfg;
 
-    float _lastBodyYaw;
-    float _lastBodyPitch;
-    float _lastHeadYaw;
-    float _lastHeadPitch;
-
     float _deltaIMUPan;
     float _deltaIMUTilt;
 
     float _filteredGyroBodyPan;
     float _filteredGyroBodyTilt;
-    float _filteredGyroHeadPan;
-    float _filteredGyroHeadTilt;
 
     AtomicFloat _velCmdPan;
     AtomicFloat _velCmdTilt;

@@ -4,19 +4,31 @@
 IMUDriver::IMUDriver()
     : _wire(nullptr)
     , _address(0x68)
+    , _sda(0), _scl(0)
     , _accelScale(1.0f)
     , _gyroScale(1.0f)
     , _gyroBiasX(0), _gyroBiasY(0), _gyroBiasZ(0)
     , _accelBiasX(0), _accelBiasY(0), _accelBiasZ(0)
     , _readFailures(0)
+    , _consecutiveFailures(0)
+    , _cfgAccelRange(0x05), _cfgGyroRange(0x02), _cfgOdr(400)
 {
 }
 
-bool IMUDriver::begin(TwoWire &wire, uint8_t address) {//IMU'yu başlatır
+bool IMUDriver::begin(TwoWire &wire, uint8_t sda, uint8_t scl, uint8_t address) {
     _wire = &wire;
     _address = address;
+    _sda = sda;
+    _scl = scl;
+    _consecutiveFailures = 0;
 
-    uint8_t chipID = getChipID();//çip kontrolü
+    // Chip ID'yi birkaç denemede oku — reset sonrası chip oturması için
+    uint8_t chipID = 0;
+    for (int attempt = 0; attempt < 3; attempt++) {
+        chipID = getChipID();
+        if (chipID == CHIP_ID_BMI160) break;
+        delay(20);
+    }
     if (chipID != CHIP_ID_BMI160) {
         Serial.printf("IMU @ 0x%02X: Yanlis cip ID 0x%02X (beklenen 0x%02X)\n",
                       _address, chipID, CHIP_ID_BMI160);
@@ -36,7 +48,46 @@ bool IMUDriver::begin(TwoWire &wire, uint8_t address) {//IMU'yu başlatır
     return true;
 }
 
+bool IMUDriver::recover() {
+    Serial.printf("IMU @ 0x%02X: I2C kurtarma yapiliyor...\n", _address);
+
+    _wire->end();
+
+    // SCL'yi 9 kez toggle et — stuck SDA'yı serbest bırakır
+    pinMode(_scl, OUTPUT);
+    pinMode(_sda, OUTPUT);
+    digitalWrite(_sda, HIGH);
+    for (int i = 0; i < 9; i++) {
+        digitalWrite(_scl, HIGH); delayMicroseconds(5);
+        digitalWrite(_scl, LOW);  delayMicroseconds(5);
+    }
+    // STOP koşulu
+    digitalWrite(_sda, LOW);  delayMicroseconds(5);
+    digitalWrite(_scl, HIGH); delayMicroseconds(5);
+    digitalWrite(_sda, HIGH); delayMicroseconds(5);
+
+    _wire->begin(_sda, _scl, 400000);
+    delay(50);
+
+    // IMU'yu yeniden başlat
+    if (!begin(*_wire, _sda, _scl, _address)) {
+        Serial.printf("IMU @ 0x%02X: Kurtarma basarisiz\n", _address);
+        return false;
+    }
+    if (!configure(_cfgAccelRange, _cfgGyroRange, _cfgOdr)) {
+        Serial.printf("IMU @ 0x%02X: Kurtarma sonrasi yapilandirma basarisiz\n", _address);
+        return false;
+    }
+
+    _consecutiveFailures = 0;
+    Serial.printf("IMU @ 0x%02X: Kurtarma basarili\n", _address);
+    return true;
+}
+
 bool IMUDriver::configure(uint8_t accelRange, uint16_t gyroRange, uint16_t odr) {
+    _cfgAccelRange = accelRange;
+    _cfgGyroRange  = gyroRange;
+    _cfgOdr        = odr;
     // İvmeölçer aralığını yapılandır
     if (!writeRegister(REG_ACC_RANGE, accelRange)) {
         Serial.println("IMU: Ivmeolcer aralik yapilandirmasi basarisiz");
@@ -77,16 +128,33 @@ bool IMUDriver::configure(uint8_t accelRange, uint16_t gyroRange, uint16_t odr) 
     return true;
 }
 
-bool IMUDriver::read(IMUData &data) {//IMU verilerini okur
+bool IMUDriver::read(IMUData &data) {
     uint8_t buffer[12];
 
-    // Veri düzeni: [gyro_x_l, gyro_x_h, gyro_y_l, gyro_y_h, gyro_z_l, gyro_z_h,
-    //               accel_x_l, accel_x_h, accel_y_l, accel_y_h, accel_z_l, accel_z_h]
-    if (!readRegisters(REG_DATA_0, buffer, 12)) {
+    // 0x0C: GYR_X_L — gyro+accel verisi buradan başlar (0x04 magnetometre içindir)
+    if (!readRegisters(0x0C, buffer, 12)) {
         _readFailures++;
+        _consecutiveFailures++;
+        if (_consecutiveFailures >= 5) {
+            recover();
+        }
         data.valid = false;
         return false;
     }
+
+    // Tüm sıfır kontrolü — bus kilitlenmesi belirtisi
+    bool allZero = true;
+    for (int i = 0; i < 12; i++) { if (buffer[i] != 0) { allZero = false; break; } }
+    if (allZero) {
+        _consecutiveFailures++;
+        if (_consecutiveFailures >= 5) {
+            recover();
+        }
+        data.valid = false;
+        return false;
+    }
+
+    _consecutiveFailures = 0;
 
     int16_t gyro_x_raw = (int16_t)(buffer[1] << 8 | buffer[0]);
     int16_t gyro_y_raw = (int16_t)(buffer[3] << 8 | buffer[2]);

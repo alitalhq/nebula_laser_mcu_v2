@@ -4,10 +4,13 @@ EncoderDriver::EncoderDriver()
     : _wire(nullptr)
     , _address(0x36)
     , _readFailures(0)
+    , _consecutiveFailures(0)
+    , _invertDirection(false)
 {
 }
 
-bool EncoderDriver::begin(SoftI2C &wire, uint8_t address) {//başlangıçta i2c bağlantısı ve mıknatıs durumu kontrol edilir
+bool EncoderDriver::begin(SoftI2C &wire, uint8_t address, bool invertDirection) {
+    _invertDirection = invertDirection;//başlangıçta i2c bağlantısı ve mıknatıs durumu kontrol edilir
     _wire = &wire;
     _address = address;
 
@@ -16,6 +19,9 @@ bool EncoderDriver::begin(SoftI2C &wire, uint8_t address) {//başlangıçta i2c 
         Serial.printf("Encoder @ 0x%02X: Yanit yok\n", _address);
         return false;
     }
+
+    // AS5600 MD flag oturması için kısa bekleme
+    delay(20);
 
     MagnetStatus magStatus = getMagnetStatus();
     if (magStatus == MAGNET_GOOD) {
@@ -30,13 +36,21 @@ bool EncoderDriver::begin(SoftI2C &wire, uint8_t address) {//başlangıçta i2c 
     return true;
 }
 
-bool EncoderDriver::readRawAngle(uint16_t &raw) {//açının ham değerini okur
+bool EncoderDriver::readRawAngle(uint16_t &raw) {
     if (!readRegister16(REG_RAW_ANGLE_H, raw)) {
         _readFailures++;
+        _consecutiveFailures++;
+        if (_consecutiveFailures >= 5) {
+            Serial.println("Encoder: I2C kurtarma yapiliyor...");
+            _wire->recover();
+            _consecutiveFailures = 0;
+        }
         return false;
     }
 
+    _consecutiveFailures = 0;
     raw &= 0x0FFF;
+    if (_invertDirection) raw = 4095 - raw;
 
     return true;
 }

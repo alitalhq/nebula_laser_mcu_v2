@@ -40,6 +40,8 @@ private:
     float _integralTilt;
     float _lastErrorPan;
     float _lastErrorTilt;
+    float _filteredDerivPan;
+    float _filteredDerivTilt;
 
     float _errorPan;
     float _errorTilt;
@@ -47,10 +49,9 @@ private:
     AtomicFloat _velCmdPan;
     AtomicFloat _velCmdTilt;
 
+    float computePID(float error, float &integral, float &lastError, float &filteredDeriv,
+                     float kp, float ki, float kd, float iMax, float dt);
 
-    float computePI(float error, float &integral, float kp, float ki, float iMax, float dt);
-
-    bool isInDeadZone(float error) const;
 };
 
 #endif

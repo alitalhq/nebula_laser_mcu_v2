@@ -15,7 +15,7 @@ public:
 
     EncoderDriver();
 
-    bool begin(SoftI2C &wire, uint8_t address = 0x36);
+    bool begin(SoftI2C &wire, uint8_t address = 0x36, bool invertDirection = false);
 
     bool readRawAngle(uint16_t &raw);
 
@@ -37,6 +37,8 @@ private:
     SoftI2C *_wire;
     uint8_t _address;
     uint32_t _readFailures;
+    uint32_t _consecutiveFailures;
+    bool _invertDirection;
 
     // I2C okuma yardımcıları
     bool readRegister(uint8_t reg, uint8_t &value);

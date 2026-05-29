@@ -169,3 +169,16 @@ uint8_t SoftI2C::read() {
 uint8_t SoftI2C::available() {
     return _rxLength - _rxIndex;
 }
+
+void SoftI2C::recover() {
+    // 9 SCL pulse ile SDA'yı serbest bırak, sonra STOP gönder
+    sdaHigh();
+    for (int i = 0; i < 9; i++) {
+        sclLow();  delayMicroseconds(5);
+        sclHigh(); delayMicroseconds(5);
+    }
+    stopCondition();
+    delayMicroseconds(10);
+    // Pinleri sıfırla
+    begin(_frequency);
+}

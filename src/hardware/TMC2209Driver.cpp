@@ -3,6 +3,7 @@
 TMC2209Driver::TMC2209Driver()
     : _driver(nullptr)
     , _status(STATUS_NOT_INITIALIZED)
+    , _uartOk(false)
     , _name("UNKNOWN")
 {
 }
@@ -31,12 +32,11 @@ bool TMC2209Driver::begin(HardwareSerial &serial, uint8_t rxPin, uint8_t txPin, 
         delay(50);
     }
 
+    _uartOk = connected;
     if (!connected) {
-        Serial.printf("TMC2209[%s]: UYARI - IOIN version dogrulanamadi, yine de yapilandirma denenecek...\n", _name);
-        // Tamamen durdurmak yerine yapilandirmayi dene
-        // Bazi TMC2209 klonlari/modulleri farkli version dondurur
+        Serial.printf("TMC2209[%s]: UYARI - UART baglantisi yok, standalone modda devam ediliyor\n", _name);
     } else {
-        Serial.printf("TMC2209[%s]: Iletisim basarili (version=0x21)\n", _name);
+        Serial.printf("TMC2209[%s]: UART iletisim basarili (version=0x21)\n", _name);
     }
 
     // Surucuyu yapilandir

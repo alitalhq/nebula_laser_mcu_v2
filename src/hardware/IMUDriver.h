@@ -18,9 +18,11 @@ public:
 
     IMUDriver();
 
-    bool begin(TwoWire &wire, uint8_t address = 0x68);
+    bool begin(TwoWire &wire, uint8_t sda, uint8_t scl, uint8_t address = 0x68);
 
     bool configure(uint8_t accelRange, uint16_t gyroRange, uint16_t odr);
+
+    bool recover();
 
     bool read(IMUData &data);
 
@@ -39,14 +41,20 @@ public:
 private:
     TwoWire *_wire;
     uint8_t _address;
+    uint8_t _sda, _scl;
 
-    float _accelScale;       // Ham değerden m/s²'ye dönüşüm katsayısı
-    float _gyroScale;        // Ham değerden derece/s'ye dönüşüm katsayısı
+    float _accelScale;
+    float _gyroScale;
 
     float _gyroBiasX, _gyroBiasY, _gyroBiasZ;
     float _accelBiasX, _accelBiasY, _accelBiasZ;
 
     uint32_t _readFailures;
+    uint32_t _consecutiveFailures;
+
+    uint8_t  _cfgAccelRange;
+    uint16_t _cfgGyroRange;
+    uint16_t _cfgOdr;
 
     // I2C yardımcı fonksiyonları
     bool writeRegister(uint8_t reg, uint8_t value);

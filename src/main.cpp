@@ -37,10 +37,24 @@ bool initializeHardware() { //donanımları başlatır
         // 4 adet i2c veri yolu bulunur bunlardan ikisi donanımsal (imu için)
     // diğer ikisi ise yazılımsal (encoder için) 
 
+    // Wire.begin() öncesi bus temizle — crash/reset sonrası stuck SDA'yı serbest bırakır
+    auto clearI2CBus = [](uint8_t sda, uint8_t scl) {
+        pinMode(scl, OUTPUT); pinMode(sda, OUTPUT);
+        digitalWrite(sda, HIGH);
+        for (int i = 0; i < 9; i++) {
+            digitalWrite(scl, HIGH); delayMicroseconds(5);
+            digitalWrite(scl, LOW);  delayMicroseconds(5);
+        }
+        digitalWrite(sda, LOW); delayMicroseconds(5);
+        digitalWrite(scl, HIGH); delayMicroseconds(5);
+        digitalWrite(sda, HIGH); delayMicroseconds(5);
+    };
+    clearI2CBus(I2C0_SDA, I2C0_SCL);
     Wire.begin(I2C0_SDA, I2C0_SCL, HARDWARE_I2C_SPEED);
     Wire.setTimeout(I2C_TIMEOUT_MS);
     Serial.println("I2C0 (Wire) @ 400kHz - Govde IMU icin");
 
+    clearI2CBus(I2C1_SDA, I2C1_SCL);
     Wire1.begin(I2C1_SDA, I2C1_SCL, HARDWARE_I2C_SPEED);
     Wire1.setTimeout(I2C_TIMEOUT_MS);
     Serial.println("I2C1 (Wire1) @ 400kHz - Kafa IMU icin");
@@ -78,37 +92,29 @@ bool initializeHardware() { //donanımları başlatır
 
     Serial.println("TMC2209 suruculer baslatiliyor...");
 
-    // UART loopback testi (TMC2209 modüllerini sokun, TX-RX pinlerini birbirine baglayin)
-    // Test bittikten sonra bu blogu yorum satiri yapin
-    Serial.println(">>> UART LOOPBACK TESTI BASLIYOR <<<");
-    Serial.println(">>> TMC2209 modullerini SOKUN, TX-RX pinlerini BIRBIRINE BAGLAYIN <<<");
-    delay(1000);
-    TMC2209Driver::uartLoopbackTest(Serial1, TMC_PAN_RX_PIN, TMC_PAN_TX_PIN, "PAN_UART1");
-    TMC2209Driver::uartLoopbackTest(Serial2, TMC_TILT_RX_PIN, TMC_TILT_TX_PIN, "TILT_UART2");
-    Serial.println(">>> UART LOOPBACK TESTI BITTI <<<\n");
-
-    // PAN TMC2209 - HardwareSerial1 (UART1)
-    if (!g_panTMC.begin(Serial1, TMC_PAN_RX_PIN, TMC_PAN_TX_PIN, "PAN")) {
-        Serial.println("KRITIK HATA: Pan TMC2209 baslatma basarisiz!");
-        Serial.println("  Kablo baglantilarini ve TMC2209 guc beslemesini kontrol edin");
-        return false;
+    // PAN TMC2209 - HardwareSerial1 (UART2 - GPIO47/48)
+    g_panTMC.begin(Serial2, TMC_PAN_RX_PIN, TMC_PAN_TX_PIN, "PAN");
+    if (!g_panTMC.isUartOk()) {
+        Serial.println("UYARI: Pan TMC2209 UART basarisiz - standalone modda devam ediliyor");
+        Serial.println("  STEP/DIR calisir, UART yapilandirmasi (mikrostep/akim) uygulanmadi");
+    } else {
+        g_panTMC.printStatus();
+        Serial.println("Pan TMC2209 UART TAMAM");
     }
-    g_panTMC.printStatus();
-    Serial.println("Pan TMC2209 TAMAM");
 
-    // TILT TMC2209 - HardwareSerial2 (UART2)
-    if (!g_tiltTMC.begin(Serial2, TMC_TILT_RX_PIN, TMC_TILT_TX_PIN, "TILT")) {
-        Serial.println("KRITIK HATA: Tilt TMC2209 baslatma basarisiz!");
-        Serial.println("  Kablo baglantilarini ve TMC2209 guc beslemesini kontrol edin");
-        return false;
+    // TILT TMC2209 - HardwareSerial1 (UART1 - GPIO45/46)
+    g_tiltTMC.begin(Serial1, TMC_TILT_RX_PIN, TMC_TILT_TX_PIN, "TILT");
+    if (!g_tiltTMC.isUartOk()) {
+        Serial.println("UYARI: Tilt TMC2209 UART basarisiz - standalone modda devam ediliyor");
+    } else {
+        g_tiltTMC.printStatus();
+        Serial.println("Tilt TMC2209 UART TAMAM");
     }
-    g_tiltTMC.printStatus();
-    Serial.println("Tilt TMC2209 TAMAM");
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
     Serial.println("Govde IMU baslatiliyor...");//IMU
-    if (!g_bodyIMU.begin(Wire, BMI160_ADDR)) {
+    if (!g_bodyIMU.begin(Wire, I2C0_SDA, I2C0_SCL, BMI160_ADDR)) {
         Serial.println("HATA: Govde IMU baslatma basarisiz");
         return false;
     }
@@ -121,7 +127,7 @@ bool initializeHardware() { //donanımları başlatır
     /////////////////////////////////////////////////////////////////////////////////////////
 
     Serial.println("Kafa IMU baslatiliyor..."); //IMU
-    if (!g_headIMU.begin(Wire1, BMI160_ADDR)) {
+    if (!g_headIMU.begin(Wire1, I2C1_SDA, I2C1_SCL, BMI160_ADDR)) {
         Serial.println("HATA: Kafa IMU baslatma basarisiz");
         return false;
     }
@@ -150,7 +156,7 @@ bool initializeHardware() { //donanımları başlatır
     /////////////////////////////////////////////////////////////////////////////////////////
 
     Serial.println("Tilt Encoder baslatiliyor...");//Encoder
-    if (!g_tiltEncoder.begin(g_softI2C_tilt, AS5600_ADDR)) {
+    if (!g_tiltEncoder.begin(g_softI2C_tilt, AS5600_ADDR, true)) {
         Serial.println("KRITIK HATA: Tilt encoder bulunamadi!");
         return false;
     }
@@ -289,6 +295,8 @@ bool loadCalibration() {//kalibrasyonu uygulama
     g_limitConfig.pan_max = data.pan_max;
     g_limitConfig.tilt_min = data.tilt_min;
     g_limitConfig.tilt_max = data.tilt_max;
+    // Limitler, encoder'ın seviyeleme sıfırına göre yeniden tanımlanana kadar devre dışı.
+    g_limitConfig.enforce_limits = false;
 
     Serial.println("========== KALIBRASYON UYGULANDI ==========\n");
     return true;
@@ -509,6 +517,11 @@ bool initializeWatchdog() {//watchdog sistem takılmasında otomatik yeniden ba�
         Serial.printf("HATA: Watchdog baslatma basarisiz: %d\n", err);
         return false;
     }
+
+    // CPU 0'daki IDLE görevi yüksek öncelikli görevler (IMU/Stab/Pos) tarafından
+    // tamamen bloke edildiğinden watchdog izlemesinden çıkarılır.
+    // Uygulama görevleri kendi watchdog beslemelerini yönetir.
+    esp_task_wdt_delete(xTaskGetIdleTaskHandleForCPU(0));
 
     Serial.printf("  ✓ Watchdog yapilandirildi (zaman asimi=%ds, panik=%s)\n",
                   WATCHDOG_TIMEOUT_SEC,
