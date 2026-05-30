@@ -34,8 +34,11 @@ struct PositionConfig {
     float kd_tilt    = 4.5f;    //4.5 [TUNING adim 2] simdilik sifir
     float i_max_tilt = 10.0f;
 
-    float deadzone_pan  = 1.5f;  // derece
-    float deadzone_tilt = 1.5f;  //0.7 derece
+    float deadzone_pan  = 1.5f;  // GROUND_LOCK — titreşimi bastırır
+    float deadzone_tilt = 1.5f;
+
+    float deadzone_pan_tracking  = 0.3f;  // TRACKING — hassas kilitleme
+    float deadzone_tilt_tracking = 0.3f;
 };
 
 // CommandCombiner parametreleri

@@ -361,6 +361,22 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
             g_targetMgr.getTargets(currentWorldPan, currentWorldTilt, targetPan, targetTilt, ffPan, ffTilt);
         }
 
+        // Mode'a göre deadzone: TRACKING hassas, diğerleri titreşim bastırır
+        {
+            static TargetManager::Mode lastDeadzonMode = TargetManager::MODE_GROUND_LOCK;
+            TargetManager::Mode curMode = g_targetMgr.getMode();
+            if (curMode != lastDeadzonMode) {
+                if (curMode == TargetManager::MODE_TRACKING) {
+                    posCtrl.setDeadzone(g_posConfig.deadzone_pan_tracking,
+                                        g_posConfig.deadzone_tilt_tracking);
+                } else {
+                    posCtrl.setDeadzone(g_posConfig.deadzone_pan,
+                                        g_posConfig.deadzone_tilt);
+                }
+                lastDeadzonMode = curMode;
+            }
+        }
+
         posCtrl.update(//kontrolcü güncellenir
             targetPan,
             targetTilt,

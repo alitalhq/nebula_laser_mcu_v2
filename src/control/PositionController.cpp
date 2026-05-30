@@ -82,6 +82,11 @@ void PositionController::setConfig(const PositionConfig &cfg) {
     _cfg = cfg;
 }
 
+void PositionController::setDeadzone(float pan, float tilt) {
+    _cfg.deadzone_pan  = pan;
+    _cfg.deadzone_tilt = tilt;
+}
+
 void PositionController::reset() {
     _integralPan = 0.0f;
     _integralTilt = 0.0f;

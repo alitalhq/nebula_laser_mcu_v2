@@ -29,6 +29,7 @@ public:
     void resetIntegral();
 
     void setConfig(const PositionConfig &cfg);
+    void setDeadzone(float pan, float tilt);
 
 
     void reset();
