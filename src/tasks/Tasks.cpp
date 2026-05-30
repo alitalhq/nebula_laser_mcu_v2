@@ -61,17 +61,17 @@ static GroundLockController groundLockCtrl; // Yer-kilit kontrolcusu
 
 
 void imuReadTask(void *params) { //IMU okuma görevi
-    Serial.println("IMUOkumaGorevi: Basladi");
+    DBG_PRINTLN("IMUOkumaGorevi: Basladi");
 
     esp_err_t wdt_err = esp_task_wdt_add(NULL); //watchdog aboneliği
     if (wdt_err != ESP_OK) {
-        Serial.printf("IMUOkumaGorevi: UYARI - Watchdog aboneligi basarisiz (%d)\n", wdt_err);
+        DBG_PRINTF("IMUOkumaGorevi: UYARI - Watchdog aboneligi basarisiz (%d)\n", wdt_err);
     } else {
-        Serial.println("IMUOkumaGorevi: Watchdog'a abone olundu");
+        DBG_PRINTLN("IMUOkumaGorevi: Watchdog'a abone olundu");
     }
 
     if (!imuReader.begin(&g_bodyIMU, &g_headIMU)) {//paralel imu okuyucuyu başlat
-        Serial.println("OLUMCUL: ParallelIMUReader baslatilamadi");
+        DBG_PRINTLN("OLUMCUL: ParallelIMUReader baslatilamadi");
         esp_task_wdt_delete(NULL);  // Cikmadan once aboneligi iptal et
         vTaskDelete(NULL);
         return;
@@ -152,7 +152,7 @@ void imuReadTask(void *params) { //IMU okuma görevi
         if (millis() - lastPrintTime > 1000) {//saniyede bir verileri yazar
             lastPrintTime = millis();
 
-            Serial.printf("[IMU] Hiz: %d Hz | Govde: Y=%.1f P=%.1f R=%.1f | Kafa: Y=%.1f P=%.1f R=%.1f | Delta: P=%.2f T=%.2f | Hatalar: %u | Zamanasimi: %u\n",
+            DBG_PRINTF("[IMU] Hiz: %d Hz | Govde: Y=%.1f P=%.1f R=%.1f | Kafa: Y=%.1f P=%.1f R=%.1f | Delta: P=%.2f T=%.2f | Hatalar: %u | Zamanasimi: %u\n",
                 loopCount,
                 bodyOri.yaw, bodyOri.pitch, bodyOri.roll,
                 headOri.yaw, headOri.pitch, headOri.roll,
@@ -169,7 +169,7 @@ void imuReadTask(void *params) { //IMU okuma görevi
 }
 
 void stabilizationTask(void *params) {//stabilizasyon görevi
-    Serial.println("StabilizasyonGorevi: Basladi");
+    DBG_PRINTLN("StabilizasyonGorevi: Basladi");
 
     stabCtrl.begin(g_stabConfig);//stabilizasyon kontrolcüsü başlar
 
@@ -221,7 +221,7 @@ void stabilizationTask(void *params) {//stabilizasyon görevi
             float stabVelTilt = stabCtrl.getVelocityCommandTilt();
 
 
-            Serial.printf("[STAB] Hiz: %d Hz | HizKomutu: P=%.2f T=%.2f derece/s\n",
+            DBG_PRINTF("[STAB] Hiz: %d Hz | HizKomutu: P=%.2f T=%.2f derece/s\n",
                 loopCount,
                 stabVelPan, stabVelTilt
             );
@@ -232,13 +232,13 @@ void stabilizationTask(void *params) {//stabilizasyon görevi
 }
 
 void positionControlTask(void *params) {//pozisyon kontrol görevi
-    Serial.println("PozisyonKontrolGorevi: Basladi");
+    DBG_PRINTLN("PozisyonKontrolGorevi: Basladi");
 
     esp_err_t wdt_err = esp_task_wdt_add(NULL);//watchdog aboneliği
     if (wdt_err != ESP_OK) {
-        Serial.printf("PozisyonKontrolGorevi: UYARI - Watchdog aboneligi basarisiz (%d)\n", wdt_err);
+        DBG_PRINTF("PozisyonKontrolGorevi: UYARI - Watchdog aboneligi basarisiz (%d)\n", wdt_err);
     } else {
-        Serial.println("PozisyonKontrolGorevi: Watchdog'a abone olundu");
+        DBG_PRINTLN("PozisyonKontrolGorevi: Watchdog'a abone olundu");
     }
 
     panFilter.begin(ENCODER_FILTER_WINDOW);// filtre ve kontrolcülri başlat
@@ -268,7 +268,7 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
     uint32_t levelStableStart = 0;  // kararlı seviyeleme başlangıcı
     uint32_t levelingStart    = millis();
 
-    Serial.println("[POS] LEVELING modunda — yere paralel konuma getiriliyor...");
+    DBG_PRINTLN("[POS] LEVELING modunda — yere paralel konuma getiriliyor...");
 
     while (true) {
         vTaskDelayUntil(&lastWakeTime, period);
@@ -339,7 +339,7 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
                     posCtrl.resetIntegral();
                     g_targetMgr.setGroundLockTarget(0.0f, 0.0f);
                     gimbalMode = MODE_STABILIZE;
-                    Serial.printf("[LEVELING] Tamamlandi — Pitch=%.1f Roll=%.1f\n", headPitch, headRoll);
+                    DBG_PRINTF("[LEVELING] Tamamlandi — Pitch=%.1f Roll=%.1f\n", headPitch, headRoll);
                 }
             } else {
                 levelStableStart = 0;
@@ -350,7 +350,7 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
                 posCtrl.resetIntegral();
                 g_targetMgr.setGroundLockTarget(0.0f, 0.0f);
                 gimbalMode = MODE_STABILIZE;
-                Serial.printf("[LEVELING] Zaman asimi — Pitch=%.1f Roll=%.1f\n", headPitch, headRoll);
+                DBG_PRINTF("[LEVELING] Zaman asimi — Pitch=%.1f Roll=%.1f\n", headPitch, headRoll);
             }
 
         } else {
@@ -456,7 +456,7 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
             const char* modeStr = (gimbalMode == MODE_LEVELING)  ? "LEVELING"  :
                                   (gimbalMode == MODE_STABILIZE) ? "STABILIZE" : "TARGET";
 
-            Serial.printf("[POS] %s | tilt: world=%.1f tgt=%.1f err=%.2f | pan: world=%.1f tgt=%.1f err=%.2f vel: P=%.1f T=%.1f\n",
+            DBG_PRINTF("[POS] %s | tilt: world=%.1f tgt=%.1f err=%.2f | pan: world=%.1f tgt=%.1f err=%.2f vel: P=%.1f T=%.1f\n",
                 modeStr,
                 currentWorldTilt, targetTilt, errorTilt,
                 currentWorldPan,  targetPan,  errorPan,
@@ -469,7 +469,7 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
 }
 
 void serialTask(void *params) {//serial iletişim görevi
-    Serial.println("SeriGorevi: Basladi");
+    DBG_PRINTLN("SeriGorevi: Basladi");
 
     SerialProtocol protocol;
     uint8_t parseBuffer[32];
@@ -500,7 +500,7 @@ void serialTask(void *params) {//serial iletişim görevi
                         g_targetMgr.handleCommand(cmd);
                         packetsReceived++;
                     } else {
-                        Serial.println("[SERI] Gecersiz paket");
+                        DBG_PRINTLN("[SERI] Gecersiz paket");
                     }
 
                     // Sonraki paket icin sifirla
@@ -555,7 +555,7 @@ void serialTask(void *params) {//serial iletişim görevi
 
         if (millis() - lastPrintTime > 5000) {
             lastPrintTime = millis();
-            Serial.printf("[SERI] Alinan paket: %u (son 5s)\n", packetsReceived);
+            DBG_PRINTF("[SERI] Alinan paket: %u (son 5s)\n", packetsReceived);
             packetsReceived = 0;
         }
 
@@ -564,20 +564,20 @@ void serialTask(void *params) {//serial iletişim görevi
 }
 
 void diagnosticsTask(void *params) {//çıktıları okuyup sensor sağlığıını kontrol eder
-    Serial.println("TeshisGorevi: Basladi");
+    DBG_PRINTLN("TeshisGorevi: Basladi");
 
     while (true) {
         vTaskDelay(pdMS_TO_TICKS(100));  // 10 Hz
 
         if (g_sensorHealth.shouldEnterSafeMode()) {
-            Serial.print("\n!!!!! KRITIK: GUVENLI MODA GECILIYOR — Sagliksiz: ");
+            DBG_PRINT("\n!!!!! KRITIK: GUVENLI MODA GECILIYOR — Sagliksiz: ");
             for (int i = 0; i < SensorHealth::SENSOR_COUNT; i++) {
                 SensorHealth::Sensor s = (SensorHealth::Sensor)i;
                 if (!g_sensorHealth.isSensorHealthy(s)) {
-                    Serial.printf("[%s] ", g_sensorHealth.getSensorName(s));
+                    DBG_PRINTF("[%s] ", g_sensorHealth.getSensorName(s));
                 }
             }
-            Serial.println("!!!!!");
+            DBG_PRINTLN("!!!!!");
 
             g_targetMgr.forceGroundLock();
             g_panMotor.disable();
@@ -596,13 +596,13 @@ void diagnosticsTask(void *params) {//çıktıları okuyup sensor sağlığıın
                 if (millis() - safeEntry > 3000) {
                     // 3 saniye sonra sağlık sayaçlarını sıfırla ve kurtarmayı dene
                     g_sensorHealth.reset();
-                    Serial.println("SENSOR SAGLIGI: Sayaclar sifirlandı, kurtarma deneniyor");
+                    DBG_PRINTLN("SENSOR SAGLIGI: Sayaclar sifirlandı, kurtarma deneniyor");
                     break;
                 }
             }
 
             if (!g_sensorHealth.shouldEnterSafeMode()) {
-                Serial.println("SENSOR SAGLIGI: Kurtarma basarili - motorlar yeniden etkinlestiriliyor");
+                DBG_PRINTLN("SENSOR SAGLIGI: Kurtarma basarili - motorlar yeniden etkinlestiriliyor");
                 digitalWrite(MOTOR_ENABLE_PIN, LOW);
             }
         }
@@ -614,7 +614,7 @@ void diagnosticsTask(void *params) {//çıktıları okuyup sensor sağlığıın
             // Haberlesme tamamen kayboldu - periyodik uyari yaz
             if (millis() - lastCommWarning > 5000) {
                 lastCommWarning = millis();
-                Serial.printf("UYARI: Haberlesme kayboldu! Son komut %ums once. Mod: YER_KILIT (guvenlik)\n",
+                DBG_PRINTF("UYARI: Haberlesme kayboldu! Son komut %ums once. Mod: YER_KILIT (guvenlik)\n",
                               g_targetMgr.getTimeSinceLastCommand());
             }
 
@@ -628,14 +628,14 @@ void diagnosticsTask(void *params) {//çıktıları okuyup sensor sağlığıın
         if (millis() - lastHealthReport > 10000) {
             lastHealthReport = millis();
 
-            Serial.println("\n===== SISTEM SAGLIGI RAPORU =====");
+            DBG_PRINTLN("\n===== SISTEM SAGLIGI RAPORU =====");
 
-            Serial.println("Sensorler:");
+            DBG_PRINTLN("Sensorler:");
             for (int i = 0; i < SensorHealth::SENSOR_COUNT; i++) {
                 SensorHealth::Sensor s = (SensorHealth::Sensor)i;
                 if (s == SensorHealth::MULTIPLEXER) continue;
 
-                Serial.printf("  %s: %.1f%% (%s)\n",
+                DBG_PRINTF("  %s: %.1f%% (%s)\n",
                     g_sensorHealth.getSensorName(s),
                     g_sensorHealth.getSensorReliability(s) * 100.0f,
                     g_sensorHealth.isSensorHealthy(s) ? "OK" : "ARIZA"
@@ -643,12 +643,12 @@ void diagnosticsTask(void *params) {//çıktıları okuyup sensor sağlığıın
             }
 
             // TMC2209 surucu sagligi
-            Serial.println("TMC2209 Suruculer:");
-            Serial.printf("  Pan:  %s | Sicaklik: %s | Yuk: %s\n",
+            DBG_PRINTLN("TMC2209 Suruculer:");
+            DBG_PRINTF("  Pan:  %s | Sicaklik: %s | Yuk: %s\n",
                 g_panTMC.getStatus() == TMC2209Driver::STATUS_OK ? "OK" : "HATA",
                 g_panTMC.isOverTemperature() ? "UYARI" : "Normal",
                 g_panTMC.isOpenLoad() ? "ACIK" : "Normal");
-            Serial.printf("  Tilt: %s | Sicaklik: %s | Yuk: %s\n",
+            DBG_PRINTF("  Tilt: %s | Sicaklik: %s | Yuk: %s\n",
                 g_tiltTMC.getStatus() == TMC2209Driver::STATUS_OK ? "OK" : "HATA",
                 g_tiltTMC.isOverTemperature() ? "UYARI" : "Normal",
                 g_tiltTMC.isOpenLoad() ? "ACIK" : "Normal");
@@ -662,11 +662,11 @@ void diagnosticsTask(void *params) {//çıktıları okuyup sensor sağlığıın
                 default:                          commStatusStr = "BILINMIYOR"; break;
             }
 
-            Serial.println("Haberlesme:");
-            Serial.printf("  Durum: %s\n", commStatusStr);
-            Serial.printf("  Son komut: %ums once\n", g_targetMgr.getTimeSinceLastCommand());
-            Serial.printf("  Alinan komut: %u\n", g_targetMgr.getCommandCount());
-            Serial.printf("  Zaman asimi: %u\n", g_targetMgr.getTimeoutCount());
+            DBG_PRINTLN("Haberlesme:");
+            DBG_PRINTF("  Durum: %s\n", commStatusStr);
+            DBG_PRINTF("  Son komut: %ums once\n", g_targetMgr.getTimeSinceLastCommand());
+            DBG_PRINTF("  Alinan komut: %u\n", g_targetMgr.getCommandCount());
+            DBG_PRINTF("  Zaman asimi: %u\n", g_targetMgr.getTimeoutCount());
 
             const char* modeStr;
             switch (g_targetMgr.getMode()) {
@@ -675,11 +675,11 @@ void diagnosticsTask(void *params) {//çıktıları okuyup sensor sağlığıın
                 case TargetManager::MODE_JOYSTICK:    modeStr = "JOYSTICK";  break;
                 default:                              modeStr = "BILINMIYOR"; break;
             }
-            Serial.printf("Mod: %s\n", modeStr);
+            DBG_PRINTF("Mod: %s\n", modeStr);
 
-            Serial.printf("Bos heap: %u byte\n", ESP.getFreeHeap());
+            DBG_PRINTF("Bos heap: %u byte\n", ESP.getFreeHeap());
 
-            Serial.println("================================\n");
+            DBG_PRINTLN("================================\n");
         }
     }
 }

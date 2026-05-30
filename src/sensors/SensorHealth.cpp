@@ -20,7 +20,7 @@ void SensorHealth::recordFailure(Sensor s) {
 
     if (_sensors[s].consecutiveFailures >= FAILURE_THRESHOLD) {
         _sensors[s].healthy = false;
-        Serial.printf("SENSOR SAGLIGI: %s SAGLIKSIZ olarak isaretlendi\n", getSensorName(s));
+        DBG_PRINTF("SENSOR SAGLIGI: %s SAGLIKSIZ olarak isaretlendi\n", getSensorName(s));
     }
 }
 

@@ -19,7 +19,7 @@ bool SerialProtocol::parsePacket(const uint8_t *buffer, size_t len, GimbalComman
     uint16_t calculatedCRC = calculateCRC16(buffer, 22);
 
     if (receivedCRC != calculatedCRC) {
-        Serial.printf("CRC uyusmazligi: alinan 0x%04X, hesaplanan 0x%04X\n",
+        DBG_PRINTF("CRC uyusmazligi: alinan 0x%04X, hesaplanan 0x%04X\n",
                       receivedCRC, calculatedCRC);
         return false;
     }
