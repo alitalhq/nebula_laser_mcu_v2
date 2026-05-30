@@ -481,6 +481,7 @@ void serialTask(void *params) {//serial iletişim görevi
 
     while (true) {
 
+#if !DEBUG_SERIAL
         while (Serial.available()) {
             uint8_t byte = Serial.read();
 
@@ -515,6 +516,7 @@ void serialTask(void *params) {//serial iletişim görevi
                 }
             }
         }
+#endif // !DEBUG_SERIAL
 
 
         static uint32_t lastTelemetryTime = 0;// serialden mesaj gönder
@@ -550,7 +552,9 @@ void serialTask(void *params) {//serial iletişim görevi
             // Olustur ve gonder
             uint8_t txBuffer[32];
             size_t len = protocol.buildTelemetry(telem, txBuffer);
+#if !DEBUG_SERIAL
             Serial.write(txBuffer, len);
+#endif
         }
 
         if (millis() - lastPrintTime > 5000) {
