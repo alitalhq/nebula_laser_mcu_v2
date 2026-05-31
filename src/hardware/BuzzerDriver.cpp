@@ -21,7 +21,7 @@ bool BuzzerDriver::begin(uint8_t pin, uint8_t pwmChannel, uint16_t frequency) {
     ledcAttachPin(_pin, _pwmChannel);
     ledcWrite(_pwmChannel, 0);  // Sessiz başla
 
-    DBG_PRINTF("BuzzerDriver: GPIO %d, PWM kanal %d, Frekans %d Hz ile baslatildi\n",
+    Serial.printf("BuzzerDriver: GPIO %d, PWM kanal %d, Frekans %d Hz ile baslatildi\n",
                   _pin, _pwmChannel, _defaultFrequency);
 
     return true;

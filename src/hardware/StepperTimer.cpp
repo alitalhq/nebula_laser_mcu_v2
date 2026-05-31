@@ -31,7 +31,7 @@ bool StepperTimer::begin(Axis axis, uint8_t stepPin, uint8_t dirPin) {
     _timer = timerBegin(timerNum, 80, true);
 
     if (_timer == nullptr) {
-        DBG_PRINTF("Zamanlayici %d olusturulamadi\n", timerNum);
+        Serial.printf("Zamanlayici %d olusturulamadi\n", timerNum);
         return false;
     }
 
@@ -47,7 +47,7 @@ bool StepperTimer::begin(Axis axis, uint8_t stepPin, uint8_t dirPin) {
 
     timerAlarmDisable(_timer);
 
-    DBG_PRINTF("StepperTimer: Eksen %d baslatildi\n", _axis);
+    Serial.printf("StepperTimer: Eksen %d baslatildi\n", _axis);
     return true;
 }
 

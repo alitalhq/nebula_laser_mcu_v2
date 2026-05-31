@@ -32,7 +32,7 @@ BuzzerDriver g_buzzer;
 
 bool initializeHardware() { //donanımları başlatır
 
-    DBG_PRINTLN("I2C veri yollari baslatiliyor..."); //i2c yollarını kuruyoruz
+    Serial.println("I2C veri yollari baslatiliyor..."); //i2c yollarını kuruyoruz
 
         // 4 adet i2c veri yolu bulunur bunlardan ikisi donanımsal (imu için)
     // diğer ikisi ise yazılımsal (encoder için) 
@@ -52,30 +52,30 @@ bool initializeHardware() { //donanımları başlatır
     clearI2CBus(I2C0_SDA, I2C0_SCL);
     Wire.begin(I2C0_SDA, I2C0_SCL, HARDWARE_I2C_SPEED);
     Wire.setTimeout(I2C_TIMEOUT_MS);
-    DBG_PRINTLN("I2C0 (Wire) @ 400kHz - Govde IMU icin");
+    Serial.println("I2C0 (Wire) @ 400kHz - Govde IMU icin");
 
     clearI2CBus(I2C1_SDA, I2C1_SCL);
     Wire1.begin(I2C1_SDA, I2C1_SCL, HARDWARE_I2C_SPEED);
     Wire1.setTimeout(I2C_TIMEOUT_MS);
-    DBG_PRINTLN("I2C1 (Wire1) @ 400kHz - Kafa IMU icin");
+    Serial.println("I2C1 (Wire1) @ 400kHz - Kafa IMU icin");
 
     g_softI2C_pan.begin(SOFTWARE_I2C_SPEED);
-    DBG_PRINTLN("SoftI2C Pan @ 100kHz - Pan Encoder icin");
+    Serial.println("SoftI2C Pan @ 100kHz - Pan Encoder icin");
 
     g_softI2C_tilt.begin(SOFTWARE_I2C_SPEED);
-    DBG_PRINTLN("SoftI2C Tilt @ 100kHz - Tilt Encoder icin");
+    Serial.println("SoftI2C Tilt @ 100kHz - Tilt Encoder icin");
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    DBG_PRINTLN("Buzzer baslatiliyor...");//sesli uyarı için buzzer
+    Serial.println("Buzzer baslatiliyor...");//sesli uyarı için buzzer
     if (!g_buzzer.begin(BUZZER_PIN, BUZZER_PWM_CH, BUZZER_FREQ)) {
-        DBG_PRINTLN("UYARI: Buzzer baslatma basarisiz");
+        Serial.println("UYARI: Buzzer baslatma basarisiz");
     } else {
-        DBG_PRINTLN("Buzzer TAMAM");
+        Serial.println("Buzzer TAMAM");
     }
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    DBG_PRINTLN("GPIO yapilandiriliyor...");// gpio pinleri ayarlanıyor
+    Serial.println("GPIO yapilandiriliyor...");// gpio pinleri ayarlanıyor
 
     pinMode(MOTOR_ENABLE_PIN, OUTPUT); //motor enable pini
     digitalWrite(MOTOR_ENABLE_PIN, HIGH);// HIGH olursa devre dışı
@@ -86,152 +86,152 @@ bool initializeHardware() { //donanımları başlatır
     pinMode(STATUS_LED_PIN, OUTPUT);//durum ledi (kartun üzerinde)
     digitalWrite(STATUS_LED_PIN, LOW);
 
-    DBG_PRINTLN("GPIO yapilandirildi");
+    Serial.println("GPIO yapilandirildi");
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    DBG_PRINTLN("TMC2209 suruculer baslatiliyor...");
+    Serial.println("TMC2209 suruculer baslatiliyor...");
 
     // PAN TMC2209 - HardwareSerial1 (UART2 - GPIO47/48)
     g_panTMC.begin(Serial2, TMC_PAN_RX_PIN, TMC_PAN_TX_PIN, "PAN");
     if (!g_panTMC.isUartOk()) {
-        DBG_PRINTLN("UYARI: Pan TMC2209 UART basarisiz - standalone modda devam ediliyor");
-        DBG_PRINTLN("  STEP/DIR calisir, UART yapilandirmasi (mikrostep/akim) uygulanmadi");
+        Serial.println("UYARI: Pan TMC2209 UART basarisiz - standalone modda devam ediliyor");
+        Serial.println("  STEP/DIR calisir, UART yapilandirmasi (mikrostep/akim) uygulanmadi");
     } else {
         g_panTMC.printStatus();
-        DBG_PRINTLN("Pan TMC2209 UART TAMAM");
+        Serial.println("Pan TMC2209 UART TAMAM");
     }
 
     // TILT TMC2209 - HardwareSerial1 (UART1 - GPIO45/46)
     g_tiltTMC.begin(Serial1, TMC_TILT_RX_PIN, TMC_TILT_TX_PIN, "TILT");
     if (!g_tiltTMC.isUartOk()) {
-        DBG_PRINTLN("UYARI: Tilt TMC2209 UART basarisiz - standalone modda devam ediliyor");
+        Serial.println("UYARI: Tilt TMC2209 UART basarisiz - standalone modda devam ediliyor");
     } else {
         g_tiltTMC.printStatus();
-        DBG_PRINTLN("Tilt TMC2209 UART TAMAM");
+        Serial.println("Tilt TMC2209 UART TAMAM");
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    DBG_PRINTLN("Govde IMU baslatiliyor...");//IMU
+    Serial.println("Govde IMU baslatiliyor...");//IMU
     if (!g_bodyIMU.begin(Wire, I2C0_SDA, I2C0_SCL, BMI160_ADDR)) {
-        DBG_PRINTLN("HATA: Govde IMU baslatma basarisiz");
+        Serial.println("HATA: Govde IMU baslatma basarisiz");
         return false;
     }
     if (!g_bodyIMU.configure(BMI160_ACCEL_RANGE, BMI160_GYRO_RANGE, BMI160_ODR)) {
-        DBG_PRINTLN("HATA: Govde IMU yapilandirma basarisiz");
+        Serial.println("HATA: Govde IMU yapilandirma basarisiz");
         return false;
     }
-    DBG_PRINTLN("Govde IMU TAMAM (I2C0, 0x68)");
+    Serial.println("Govde IMU TAMAM (I2C0, 0x68)");
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    DBG_PRINTLN("Kafa IMU baslatiliyor..."); //IMU
+    Serial.println("Kafa IMU baslatiliyor..."); //IMU
     if (!g_headIMU.begin(Wire1, I2C1_SDA, I2C1_SCL, BMI160_ADDR)) {
-        DBG_PRINTLN("HATA: Kafa IMU baslatma basarisiz");
+        Serial.println("HATA: Kafa IMU baslatma basarisiz");
         return false;
     }
     if (!g_headIMU.configure(BMI160_ACCEL_RANGE, BMI160_GYRO_RANGE, BMI160_ODR)) {
-        DBG_PRINTLN("HATA: Kafa IMU yapilandirma basarisiz");
+        Serial.println("HATA: Kafa IMU yapilandirma basarisiz");
         return false;
     }
-    DBG_PRINTLN("Kafa IMU TAMAM (I2C1, 0x68)");
+    Serial.println("Kafa IMU TAMAM (I2C1, 0x68)");
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    DBG_PRINTLN("Pan Encoder baslatiliyor...");//Encoder
+    Serial.println("Pan Encoder baslatiliyor...");//Encoder
     if (!g_panEncoder.begin(g_softI2C_pan, AS5600_ADDR)) {
-        DBG_PRINTLN("KRITIK HATA: Pan encoder bulunamadi!");
+        Serial.println("KRITIK HATA: Pan encoder bulunamadi!");
         return false;
     }
 
     // Mıknatıs durumunu kontrol et - doğru çalışma için önemli
     EncoderDriver::MagnetStatus panMagnet = g_panEncoder.getMagnetStatus();
     if (panMagnet == EncoderDriver::MAGNET_GOOD) {
-        DBG_PRINTLN("Pan Encoder TAMAM (SoftI2C, 0x36, miknatis iyi)");
+        Serial.println("Pan Encoder TAMAM (SoftI2C, 0x36, miknatis iyi)");
     } else {
-        DBG_PRINTF("Pan Encoder TAMAM ama miknatis durumu: %d (2=iyi)\n", panMagnet);
+        Serial.printf("Pan Encoder TAMAM ama miknatis durumu: %d (2=iyi)\n", panMagnet);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    DBG_PRINTLN("Tilt Encoder baslatiliyor...");//Encoder
+    Serial.println("Tilt Encoder baslatiliyor...");//Encoder
     if (!g_tiltEncoder.begin(g_softI2C_tilt, AS5600_ADDR, true)) {
-        DBG_PRINTLN("KRITIK HATA: Tilt encoder bulunamadi!");
+        Serial.println("KRITIK HATA: Tilt encoder bulunamadi!");
         return false;
     }
 
     EncoderDriver::MagnetStatus tiltMagnet = g_tiltEncoder.getMagnetStatus();
     if (tiltMagnet == EncoderDriver::MAGNET_GOOD) {
-        DBG_PRINTLN("Tilt Encoder TAMAM (SoftI2C, 0x36, miknatis iyi)");
+        Serial.println("Tilt Encoder TAMAM (SoftI2C, 0x36, miknatis iyi)");
     } else {
-        DBG_PRINTF("Tilt Encoder TAMAM ama miknatis durumu: %d (2=iyi)\n", tiltMagnet);
+        Serial.printf("Tilt Encoder TAMAM ama miknatis durumu: %d (2=iyi)\n", tiltMagnet);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    DBG_PRINTLN("Step motorlar baslatiliyor...");//Step motorlar
+    Serial.println("Step motorlar baslatiliyor...");//Step motorlar
 
     if (!g_panMotor.begin(StepperTimer::PAN, PAN_STEP_PIN, PAN_DIR_PIN)) {
-        DBG_PRINTLN("KRITIK HATA: Pan motor zamanlayicisi baslatma basarisiz!");
+        Serial.println("KRITIK HATA: Pan motor zamanlayicisi baslatma basarisiz!");
         return false;
     }
-    DBG_PRINTLN("Pan Motor TAMAM");
+    Serial.println("Pan Motor TAMAM");
 
     if (!g_tiltMotor.begin(StepperTimer::TILT, TILT_STEP_PIN, TILT_DIR_PIN)) {
-        DBG_PRINTLN("KRITIK HATA: Tilt motor zamanlayicisi baslatma basarisiz!");
+        Serial.println("KRITIK HATA: Tilt motor zamanlayicisi baslatma basarisiz!");
         return false;
     }
-    DBG_PRINTLN("Tilt Motor TAMAM");
+    Serial.println("Tilt Motor TAMAM");
 
-    DBG_PRINTLN("========== DONANIM TAMAM ==========\n");
+    Serial.println("========== DONANIM TAMAM ==========\n");
     return true;
 }
 
 bool calibrateGyros() {//imuları kalibre edip NSVye kaydeder
-    DBG_PRINTLN("\n========== JIROSKOP KALIBRASYONU ==========");
-    DBG_PRINTLN("Gimbal 10 saniye boyunca HAREKETSIZ kalmalidir");
-    DBG_PRINTLN("Kalibrasyon sirasinda gimbal'i HAREKET ETTIRMEYIN");
-    DBG_PRINTLN("");
-    DBG_PRINTLN("Kalibrasyon 3 saniye icinde basliyor...");
+    Serial.println("\n========== JIROSKOP KALIBRASYONU ==========");
+    Serial.println("Gimbal 10 saniye boyunca HAREKETSIZ kalmalidir");
+    Serial.println("Kalibrasyon sirasinda gimbal'i HAREKET ETTIRMEYIN");
+    Serial.println("");
+    Serial.println("Kalibrasyon 3 saniye icinde basliyor...");
 
     delay(3000);
 
     g_buzzer.calibrationWarning();//kalibrasyon boyunca ses çıkarır
 
 
-    DBG_PRINTLN("\nGovde IMU jiroskopu kalibre ediliyor...");
+    Serial.println("\nGovde IMU jiroskopu kalibre ediliyor...");
     if (!g_bodyIMU.calibrateGyro(1000)) { //Govde IMU'dan 1000 örnek ile kalibre ediliyor
         g_buzzer.noTone();
         g_buzzer.errorAlert();//Kalibre edilemezse hata sesi çıkartıyor
-        DBG_PRINTLN("HATA: Govde IMU kalibrasyonu basarisiz");
+        Serial.println("HATA: Govde IMU kalibrasyonu basarisiz");
         return false;
     }
 
-    DBG_PRINTLN("Kafa IMU jiroskopu kalibre ediliyor...");
+    Serial.println("Kafa IMU jiroskopu kalibre ediliyor...");
     if (!g_headIMU.calibrateGyro(1000)) { // Kafa IMU kalibrasyonu
         g_buzzer.noTone();
         g_buzzer.errorAlert();
-        DBG_PRINTLN("HATA: Kafa IMU kalibrasyonu basarisiz");
+        Serial.println("HATA: Kafa IMU kalibrasyonu basarisiz");
         return false;
     }
 
     g_buzzer.noTone();
     delay(200);
 
-    DBG_PRINTLN("\nKalibrasyon NVS'ye kaydediliyor..."); // kalibre verileri Non-Volatile Storage'e kaydediliyor
+    Serial.println("\nKalibrasyon NVS'ye kaydediliyor..."); // kalibre verileri Non-Volatile Storage'e kaydediliyor
     SensorCalibration calib;                                // bu sayede cihaz yeniden başladığında kalibrasyon verileri korunur
     SensorCalibration::CalibrationData data;
 
     if (calib.loadFromNVS()) {
         data = calib.getData();//NVS'de veri varsa yükler
-        DBG_PRINTLN("Mevcut mekanik limitler korunuyor");
+        Serial.println("Mevcut mekanik limitler korunuyor");
     } else {
         data.pan_min = DEFAULT_PAN_MIN; //yoksa configteki default sınırları alır bu değerleri güncellemeyi unutma
         data.pan_max = DEFAULT_PAN_MAX;
         data.tilt_min = DEFAULT_TILT_MIN;
         data.tilt_max = DEFAULT_TILT_MAX;
-        DBG_PRINTLN("Varsayilan mekanik limitler kullaniliyor");
+        Serial.println("Varsayilan mekanik limitler kullaniliyor");
     }
 
     // Jiroskop sapma değerlerini güncelle NSVdeki verilere göre
@@ -239,26 +239,26 @@ bool calibrateGyros() {//imuları kalibre edip NSVye kaydeder
     g_headIMU.getGyroBias(data.head_gyro_bias_x, data.head_gyro_bias_y, data.head_gyro_bias_z);
 
     if (calib.saveToNVS(data)) {//kaydet
-        DBG_PRINTLN("Jiroskop kalibrasyonu NVS'ye kaydedildi");
+        Serial.println("Jiroskop kalibrasyonu NVS'ye kaydedildi");
     } else {
-        DBG_PRINTLN("Kalibrasyon NVS'ye kaydedilemedi");
-        DBG_PRINTLN("Kalibrasyon yeniden baslatmada kaybolacak");
+        Serial.println("Kalibrasyon NVS'ye kaydedilemedi");
+        Serial.println("Kalibrasyon yeniden baslatmada kaybolacak");
     }
 
-    DBG_PRINTLN("========== JIROSKOP KALIBRASYONU TAMAMLANDI ==========\n");
+    Serial.println("========== JIROSKOP KALIBRASYONU TAMAMLANDI ==========\n");
     return true;
 }
 
 bool loadCalibration() {//kalibrasyonu uygulama
-    DBG_PRINTLN("\n========== KALIBRASYON YUKLENIYOR ==========");
+    Serial.println("\n========== KALIBRASYON YUKLENIYOR ==========");
 
     SensorCalibration calib;
 
     // NVS'den kalibrasyon verilerini almaya çalışır
     if (!calib.loadFromNVS()) {
-        DBG_PRINTLN("NVS'de kalibrasyon bulunamadi");
-        DBG_PRINTLN("Varsayilan degerler kullaniliyor");
-        DBG_PRINTLN("Optimum performans icin jiroskop kalibrasyonu yapin");
+        Serial.println("NVS'de kalibrasyon bulunamadi");
+        Serial.println("Varsayilan degerler kullaniliyor");
+        Serial.println("Optimum performans icin jiroskop kalibrasyonu yapin");
 
         // Varsayılan kalibrasyon oluştur
         SensorCalibration::CalibrationData data;
@@ -277,7 +277,7 @@ bool loadCalibration() {//kalibrasyonu uygulama
 
         calib.setData(data);
     } else {
-        DBG_PRINTLN("Kalibrasyon NVS'den yuklendi");
+        Serial.println("Kalibrasyon NVS'den yuklendi");
     }
 
     // Kalibrasyon değerlerini ekrana yazdırır
@@ -298,39 +298,39 @@ bool loadCalibration() {//kalibrasyonu uygulama
     // Limitler, encoder'ın seviyeleme sıfırına göre yeniden tanımlanana kadar devre dışı.
     g_limitConfig.enforce_limits = false;
 
-    DBG_PRINTLN("========== KALIBRASYON UYGULANDI ==========\n");
+    Serial.println("========== KALIBRASYON UYGULANDI ==========\n");
     return true;
 }
 
 void initializeControllers() {
-    DBG_PRINTLN("\n========== KONTROLCULER BASLATILIYOR ==========");
+    Serial.println("\n========== KONTROLCULER BASLATILIYOR ==========");
 
     float initialPan = g_panEncoder.readAngleDegrees(); // başlangıç encoder değerleri okunur
     float initialTilt = g_tiltEncoder.readAngleDegrees();
 
     // encoder okuma hatası kontrolü
     if (initialPan < 0 || initialTilt < 0) {
-        DBG_PRINTLN("HATA: Baslangic encoder konumlari okunamadi");
-        DBG_PRINTLN("HATA: Yedek olarak 0° kullaniliyor");
+        Serial.println("HATA: Baslangic encoder konumlari okunamadi");
+        Serial.println("HATA: Yedek olarak 0° kullaniliyor");
         initialPan = 0;
         initialTilt = 0;
     }
 
-    DBG_PRINTF("Baslangic encoder konumu:\n");
-    DBG_PRINTF("  Pan:  %.2f°\n", initialPan);
-    DBG_PRINTF("  Tilt: %.2f°\n", initialTilt);
+    Serial.printf("Baslangic encoder konumu:\n");
+    Serial.printf("  Pan:  %.2f°\n", initialPan);
+    Serial.printf("  Tilt: %.2f°\n", initialTilt);
 
     // Hedef yöneticisini mevcut konumla başlat
     if (!g_targetMgr.begin(initialPan, initialTilt)) {
-        DBG_PRINTLN("HATA: TargetManager baslatma basarisiz");
+        Serial.println("HATA: TargetManager baslatma basarisiz");
     } else {
-        DBG_PRINTLN("TargetManager baslatildi");
+        Serial.println("TargetManager baslatildi");
     }
 
     //sensorler için mutex oluşturuyoruz. mutex çoklu işlerde aynı ayna erişilip hata oluşmasını engeller
     g_sensorData.mutex = xSemaphoreCreateMutex();
     if (!g_sensorData.mutex) {
-        DBG_PRINTLN("KRITIK HATA: Sensor verisi mutex'i olusturulamadi");
+        Serial.println("KRITIK HATA: Sensor verisi mutex'i olusturulamadi");
         while(1) { //esp32 deki dahili led yanıp söner önemli bir hata olduğu için sonsuz döngüye girer
             digitalWrite(STATUS_LED_PIN, HIGH);
             delay(100);
@@ -338,13 +338,13 @@ void initializeControllers() {
             delay(100);
         }
     }
-    DBG_PRINTLN("Sensor verisi mutex'i olusturuldu");
+    Serial.println("Sensor verisi mutex'i olusturuldu");
 
-    DBG_PRINTLN("========== KONTROLCULER BASLATILDI ==========\n");
+    Serial.println("========== KONTROLCULER BASLATILDI ==========\n");
 }
 
 void createTasks() {
-    DBG_PRINTLN("\n========== FREERTOS GOREVLERI OLUSTURULUYOR ==========");
+    Serial.println("\n========== FREERTOS GOREVLERI OLUSTURULUYOR ==========");
     //freeRTOSta çalışması için farklı taskler oluşturuluyor
     //görevleri eş zamanlı yapmaları sağlanıyor
 
@@ -365,11 +365,11 @@ void createTasks() {
         IMU_READ_TASK_CORE
     );
     if (result != pdPASS) {
-        DBG_PRINTLN("KRITIK HATA: IMUReadTask olusturulamadi");
+        Serial.println("KRITIK HATA: IMUReadTask olusturulamadi");
         while(1);
     }
-    DBG_PRINTF("✓ IMUReadTask olusturuldu\n");
-    DBG_PRINTF("    Cekirdek: %d | Oncelik: %d | Hiz: %d Hz | Yigin: %d bayt\n",
+    Serial.printf("✓ IMUReadTask olusturuldu\n");
+    Serial.printf("    Cekirdek: %d | Oncelik: %d | Hiz: %d Hz | Yigin: %d bayt\n",
                   IMU_READ_TASK_CORE, IMU_READ_TASK_PRIORITY,
                   IMU_READ_FREQ_HZ, IMU_READ_TASK_STACK);
 
@@ -388,11 +388,11 @@ void createTasks() {
         STABILIZATION_TASK_CORE
     );
     if (result != pdPASS) {
-        DBG_PRINTLN("KRITIK HATA: StabilizationTask olusturulamadi");
+        Serial.println("KRITIK HATA: StabilizationTask olusturulamadi");
         while(1);
     }
-    DBG_PRINTF("✓ StabilizationTask olusturuldu\n");
-    DBG_PRINTF("    Cekirdek: %d | Oncelik: %d | Hiz: %d Hz | Yigin: %d bayt\n",
+    Serial.printf("✓ StabilizationTask olusturuldu\n");
+    Serial.printf("    Cekirdek: %d | Oncelik: %d | Hiz: %d Hz | Yigin: %d bayt\n",
                   STABILIZATION_TASK_CORE, STABILIZATION_TASK_PRIORITY,
                   STABILIZATION_FREQ_HZ, STABILIZATION_TASK_STACK);
 
@@ -411,11 +411,11 @@ void createTasks() {
         POSITION_TASK_CORE
     );
     if (result != pdPASS) {
-        DBG_PRINTLN("KRITIK HATA: PositionControlTask olusturulamadi");
+        Serial.println("KRITIK HATA: PositionControlTask olusturulamadi");
         while(1);
     }
-    DBG_PRINTF("✓ PositionControlTask olusturuldu\n");
-    DBG_PRINTF("    Cekirdek: %d | Oncelik: %d | Hiz: %d Hz | Yigin: %d bayt\n",
+    Serial.printf("✓ PositionControlTask olusturuldu\n");
+    Serial.printf("    Cekirdek: %d | Oncelik: %d | Hiz: %d Hz | Yigin: %d bayt\n",
                   POSITION_TASK_CORE, POSITION_TASK_PRIORITY,
                   POSITION_FREQ_HZ, POSITION_TASK_STACK);
 
@@ -434,11 +434,11 @@ void createTasks() {
         SERIAL_TASK_CORE
     );
     if (result != pdPASS) {
-        DBG_PRINTLN("KRITIK HATA: SerialTask olusturulamadi");
+        Serial.println("KRITIK HATA: SerialTask olusturulamadi");
         while(1);
     }
-    DBG_PRINTF("✓ SerialTask olusturuldu\n");
-    DBG_PRINTF("    Cekirdek: %d | Oncelik: %d | Hiz: Asenkron | Yigin: %d bayt\n",
+    Serial.printf("✓ SerialTask olusturuldu\n");
+    Serial.printf("    Cekirdek: %d | Oncelik: %d | Hiz: Asenkron | Yigin: %d bayt\n",
                   SERIAL_TASK_CORE, SERIAL_TASK_PRIORITY, SERIAL_TASK_STACK);
 
     // ========================================
@@ -456,40 +456,40 @@ void createTasks() {
         DIAGNOSTICS_TASK_CORE
     );
     if (result != pdPASS) {
-        DBG_PRINTLN("KRITIK HATA: DiagnosticsTask olusturulamadi");
+        Serial.println("KRITIK HATA: DiagnosticsTask olusturulamadi");
         while(1);
     }
-    DBG_PRINTF("✓ DiagnosticsTask olusturuldu\n");
-    DBG_PRINTF("    Cekirdek: %d | Oncelik: %d | Hiz: %d Hz | Yigin: %d bayt\n",
+    Serial.printf("✓ DiagnosticsTask olusturuldu\n");
+    Serial.printf("    Cekirdek: %d | Oncelik: %d | Hiz: %d Hz | Yigin: %d bayt\n",
                   DIAGNOSTICS_TASK_CORE, DIAGNOSTICS_TASK_PRIORITY,
                   DIAGNOSTICS_FREQ_HZ, DIAGNOSTICS_TASK_STACK);
 
-    DBG_PRINTLN("========== TUM GOREVLER OLUSTURULDU ==========\n");
+    Serial.println("========== TUM GOREVLER OLUSTURULDU ==========\n");
 }
 
 void printSystemInfo() {
-    DBG_PRINTLN("nNEBULA LASER MCU");
-    DBG_PRINTLN("Version 2.0.0");
-    DBG_PRINTLN();
-    DBG_PRINTF("Cip: %s\n", ESP.getChipModel());
-    DBG_PRINTF("Cekirdek Sayisi: %d\n", ESP.getChipCores());
-    DBG_PRINTF("CPU Frekansi: %d MHz\n", ESP.getCpuFreqMHz());
-    DBG_PRINTF("Flash Boyutu: %d MB\n", ESP.getFlashChipSize() / (1024 * 1024));
-    DBG_PRINTF("Bos Heap: %d bayt\n", ESP.getFreeHeap());
-    DBG_PRINTF("PSRAM: %s\n", ESP.getPsramSize() > 0 ? "Mevcut" : "Mevcut degil");
-    DBG_PRINTLN();
+    Serial.println("nNEBULA LASER MCU");
+    Serial.println("Version 2.0.0");
+    Serial.println();
+    Serial.printf("Cip: %s\n", ESP.getChipModel());
+    Serial.printf("Cekirdek Sayisi: %d\n", ESP.getChipCores());
+    Serial.printf("CPU Frekansi: %d MHz\n", ESP.getCpuFreqMHz());
+    Serial.printf("Flash Boyutu: %d MB\n", ESP.getFlashChipSize() / (1024 * 1024));
+    Serial.printf("Bos Heap: %d bayt\n", ESP.getFreeHeap());
+    Serial.printf("PSRAM: %s\n", ESP.getPsramSize() > 0 ? "Mevcut" : "Mevcut degil");
+    Serial.println();
 }
 
 bool calibrateGroundReference() {
-    DBG_PRINTLN("\n========== YERCEKIMI REFERANS KALIBRASYONU ==========");//gimbal modu için yere paralel konumdaki referansı alıyor
-    DBG_PRINTLN("Bu islem 'gercek asagi' yonunu kalibre edecek");
-    DBG_PRINTLN("");
-    DBG_PRINTLN("  ONEMLI:");
-    DBG_PRINTLN("  1. Drone'u DUZGUN BIR ZEMINE yerlestirin");
-    DBG_PRINTLN("  2. Drone'u TAMAMEN HAREKETSIZ tutun");
-    DBG_PRINTLN("  3. Kalibrasyon sirasinda drone'a DOKUNMAYIN");
-    DBG_PRINTLN("");
-    DBG_PRINTLN("Kalibrasyon 3 saniye icinde basliyor...");
+    Serial.println("\n========== YERCEKIMI REFERANS KALIBRASYONU ==========");//gimbal modu için yere paralel konumdaki referansı alıyor
+    Serial.println("Bu islem 'gercek asagi' yonunu kalibre edecek");
+    Serial.println("");
+    Serial.println("  ONEMLI:");
+    Serial.println("  1. Drone'u DUZGUN BIR ZEMINE yerlestirin");
+    Serial.println("  2. Drone'u TAMAMEN HAREKETSIZ tutun");
+    Serial.println("  3. Kalibrasyon sirasinda drone'a DOKUNMAYIN");
+    Serial.println("");
+    Serial.println("Kalibrasyon 3 saniye icinde basliyor...");
 
     delay(3000);
 
@@ -498,7 +498,7 @@ bool calibrateGroundReference() {
     if (!g_groundRef.calibrate(g_bodyIMU, 1000)) {
         g_buzzer.noTone();
         g_buzzer.errorAlert();  // Hata sesi
-        DBG_PRINTLN("HATA: Yercekimi referans kalibrasyonu basarisiz");
+        Serial.println("HATA: Yercekimi referans kalibrasyonu basarisiz");
         return false;
     }
 
@@ -509,12 +509,12 @@ bool calibrateGroundReference() {
 }
 
 bool initializeWatchdog() {//watchdog sistem takılmasında otomatik yeniden başlatmayı sağlamaktadır bizim için önemli
-    DBG_PRINTLN("\n========== WATCHDOG BASLATMA ==========");//esp32'ye göre kodlandı laser kartı tasarlanınca değiştirmeliyiz
+    Serial.println("\n========== WATCHDOG BASLATMA ==========");//esp32'ye göre kodlandı laser kartı tasarlanınca değiştirmeliyiz
 
     esp_err_t err = esp_task_wdt_init(WATCHDOG_TIMEOUT_SEC, WATCHDOG_PANIC);
 
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-        DBG_PRINTF("HATA: Watchdog baslatma basarisiz: %d\n", err);
+        Serial.printf("HATA: Watchdog baslatma basarisiz: %d\n", err);
         return false;
     }
 
@@ -523,11 +523,11 @@ bool initializeWatchdog() {//watchdog sistem takılmasında otomatik yeniden ba�
     // Uygulama görevleri kendi watchdog beslemelerini yönetir.
     esp_task_wdt_delete(xTaskGetIdleTaskHandleForCPU(0));
 
-    DBG_PRINTF("  ✓ Watchdog yapilandirildi (zaman asimi=%ds, panik=%s)\n",
+    Serial.printf("  ✓ Watchdog yapilandirildi (zaman asimi=%ds, panik=%s)\n",
                   WATCHDOG_TIMEOUT_SEC,
                   WATCHDOG_PANIC ? "etkin" : "devre disi");
 
-    DBG_PRINTLN("========== WATCHDOG HAZIR ==========\n");
+    Serial.println("========== WATCHDOG HAZIR ==========\n");
     return true;
 }
 
@@ -541,12 +541,12 @@ void setup() {
     Serial.begin(SERIAL_BAUD_RATE, SERIAL_8N1, 44, 43);  // RX=GPIO44, TX=GPIO43 (UART0)
     delay(2000);
 
-    DBG_PRINTLN("\n\n\n");
+    Serial.println("\n\n\n");
     printSystemInfo();
 
     if (!initializeHardware()) {//donanımları başlat
-        DBG_PRINTLN("\nDONANIM BASLATMA BASARISIZ");
-        DBG_PRINTLN("SISTEM DURDURULDU");
+        Serial.println("\nDONANIM BASLATMA BASARISIZ");
+        Serial.println("SISTEM DURDURULDU");
 
         while (true) {//hem led yanıp söner hem hata sesi verir
             digitalWrite(STATUS_LED_PIN, HIGH);
@@ -559,23 +559,23 @@ void setup() {
     }
 
     if (!calibrateGroundReference()) {//yerçekimi referansını kalibre et
-        DBG_PRINTLN("\nYercekimi referans kalibrasyonu BASARISIZ");
-        DBG_PRINTLN("Varsayilan kullaniliyor (hatali olabilir)");
+        Serial.println("\nYercekimi referans kalibrasyonu BASARISIZ");
+        Serial.println("Varsayilan kullaniliyor (hatali olabilir)");
         g_buzzer.errorAlert();
         delay(3000);
     }
 
     if (!calibrateGyros()) {//imuları kalibre et
-        DBG_PRINTLN("\nJIROSKOP KALIBRASYONU BASARISIZ");
-        DBG_PRINTLN("Kalibre edilmemis jiroskoplarla devam ediliyor (ONERILMEZ)");
-        DBG_PRINTLN("Stabilizasyon performansi dusuk olacak");
+        Serial.println("\nJIROSKOP KALIBRASYONU BASARISIZ");
+        Serial.println("Kalibre edilmemis jiroskoplarla devam ediliyor (ONERILMEZ)");
+        Serial.println("Stabilizasyon performansi dusuk olacak");
         g_buzzer.errorAlert();
         delay(3000);
     }
 
     if (!loadCalibration()) {//NSVden kalibrasyonu al
-        DBG_PRINTLN("\nKALIBRASYON YUKLEME BASARISIZ");
-        DBG_PRINTLN("Varsayilanlar kullaniliyor");
+        Serial.println("\nKALIBRASYON YUKLEME BASARISIZ");
+        Serial.println("Varsayilanlar kullaniliyor");
     }
 
     initializeControllers();//target managerı başlat
@@ -583,24 +583,24 @@ void setup() {
     createTasks();//FreeRTOS görevlerini başlat
 
     if (!initializeWatchdog()) {//watchdog'u başlat
-        DBG_PRINTLN("\nWATCHDOG BASLATMA BASARISIZ");
-        DBG_PRINTLN("Sistem watchdog koruması olmadan devam edecek");
+        Serial.println("\nWATCHDOG BASLATMA BASARISIZ");
+        Serial.println("Sistem watchdog koruması olmadan devam edecek");
         g_buzzer.errorAlert();
         delay(1000);
     }
 
-    DBG_PRINTLN("\n========== MOTORLAR ETKINLESTIRILIYOR ==========");//motorları başlat
-    DBG_PRINTLN("Sistemin kararli hale gelmesi icin 1 saniye bekleniyor...");
+    Serial.println("\n========== MOTORLAR ETKINLESTIRILIYOR ==========");//motorları başlat
+    Serial.println("Sistemin kararli hale gelmesi icin 1 saniye bekleniyor...");
     delay(1000);
 
     digitalWrite(MOTOR_ENABLE_PIN, LOW);
-    DBG_PRINTLN("✓ Motorlar etkinlestirildi");
-    DBG_PRINTLN("========== MOTORLAR HAZIR ==========\n");
+    Serial.println("✓ Motorlar etkinlestirildi");
+    Serial.println("========== MOTORLAR HAZIR ==========\n");
 
 
-    DBG_PRINTLN("\nSISTEM HAZIR");
-    DBG_PRINTLN("ROS2 komutlari bekleniyor...");
-    DBG_PRINTLN();
+    Serial.println("\nSISTEM HAZIR");
+    Serial.println("ROS2 komutlari bekleniyor...");
+    Serial.println();
 
     g_buzzer.systemReady();//sistem hazır bildirim sesi
 
@@ -611,7 +611,7 @@ void setup() {
         delay(200);
     }
 
-    DBG_PRINTLN("Sistem calisir durumda. Sensor verileri izleniyor...\n");
+    Serial.println("Sistem calisir durumda. Sensor verileri izleniyor...\n");
 }
 
 

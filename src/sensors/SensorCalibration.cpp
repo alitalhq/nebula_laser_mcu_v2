@@ -16,20 +16,20 @@ SensorCalibration::SensorCalibration()
 
 bool SensorCalibration::loadFromNVS() {//NVS'den klibrasyon verilerini okur
     if (!_prefs.begin("gimbal", true)) {
-        DBG_PRINTLN("NVS namespace acilamadi");
+        Serial.println("NVS namespace acilamadi");
         return false;
     }
 
     if (!_prefs.isKey("calib")) {
         _prefs.end();
-        DBG_PRINTLN("NVS'de kalibrasyon bulunamadi");
+        Serial.println("NVS'de kalibrasyon bulunamadi");
         return false;
     }
 
     size_t dataSize = _prefs.getBytesLength("calib");
     if (dataSize != sizeof(CalibrationData)) {
         _prefs.end();
-        DBG_PRINTF("Kalibrasyon boyutu uyusmazligi: %d vs %d\n", dataSize, sizeof(CalibrationData));
+        Serial.printf("Kalibrasyon boyutu uyusmazligi: %d vs %d\n", dataSize, sizeof(CalibrationData));
         return false;
     }
 
@@ -37,17 +37,17 @@ bool SensorCalibration::loadFromNVS() {//NVS'den klibrasyon verilerini okur
     _prefs.end();
 
     if (!verifyCRC(_data)) {
-        DBG_PRINTLN("Kalibrasyon CRC kontrolu basarisiz - veri bozuk!");
+        Serial.println("Kalibrasyon CRC kontrolu basarisiz - veri bozuk!");
         return false;
     }
 
     if (_data.version != 1) {
-        DBG_PRINTF("Kalibrasyon surum uyusmazligi: %d (beklenen 1)\n", _data.version);
+        Serial.printf("Kalibrasyon surum uyusmazligi: %d (beklenen 1)\n", _data.version);
         return false;
     }
 
     _valid = true;
-    DBG_PRINTLN("Kalibrasyon NVS'den basariyla yuklendi");
+    Serial.println("Kalibrasyon NVS'den basariyla yuklendi");
     return true;
 }
 
@@ -59,7 +59,7 @@ bool SensorCalibration::saveToNVS(const CalibrationData &data) {//NVS'ye kaydetm
     saveData.crc = calculateCRC(saveData);
 
     if (!_prefs.begin("gimbal", false)) {
-        DBG_PRINTLN("NVS yazma icin acilamadi");
+        Serial.println("NVS yazma icin acilamadi");
         return false;
     }
 
@@ -67,14 +67,14 @@ bool SensorCalibration::saveToNVS(const CalibrationData &data) {//NVS'ye kaydetm
     _prefs.end();
 
     if (written != sizeof(CalibrationData)) {
-        DBG_PRINTLN("Kalibrasyon NVS'ye yazilamadi");
+        Serial.println("Kalibrasyon NVS'ye yazilamadi");
         return false;
     }
 
     _data = saveData;
     _valid = true;
 
-    DBG_PRINTLN("Kalibrasyon NVS'ye basariyla kaydedildi");
+    Serial.println("Kalibrasyon NVS'ye basariyla kaydedildi");
     return true;
 }
 
@@ -93,7 +93,7 @@ bool SensorCalibration::eraseCalibration() {//kalibrasyon verilerini temizler
 
     if (success) {
         _valid = false;
-        DBG_PRINTLN("Kalibrasyon NVS'den silindi");
+        Serial.println("Kalibrasyon NVS'den silindi");
     }
 
     return success;
@@ -101,34 +101,34 @@ bool SensorCalibration::eraseCalibration() {//kalibrasyon verilerini temizler
 
 void SensorCalibration::printCalibration() const {//kalibrasyon verilerini yazar
     if (!_valid) {
-        DBG_PRINTLN("Gecerli kalibrasyon yuklenmedi");
+        Serial.println("Gecerli kalibrasyon yuklenmedi");
         return;
     }
 
-    DBG_PRINTLN("\n========== KALIBRASYON VERILERI ==========");
-    DBG_PRINTF("Surum: %d\n", _data.version);
-    DBG_PRINTF("Zaman Damgasi: %u ms\n", _data.timestamp);
+    Serial.println("\n========== KALIBRASYON VERILERI ==========");
+    Serial.printf("Surum: %d\n", _data.version);
+    Serial.printf("Zaman Damgasi: %u ms\n", _data.timestamp);
 
-    DBG_PRINTLN("\nGovde IMU Jiroskop Sapmasi (derece/s):");
-    DBG_PRINTF("  X: %.4f\n", _data.body_gyro_bias_x);
-    DBG_PRINTF("  Y: %.4f\n", _data.body_gyro_bias_y);
-    DBG_PRINTF("  Z: %.4f\n", _data.body_gyro_bias_z);
+    Serial.println("\nGovde IMU Jiroskop Sapmasi (derece/s):");
+    Serial.printf("  X: %.4f\n", _data.body_gyro_bias_x);
+    Serial.printf("  Y: %.4f\n", _data.body_gyro_bias_y);
+    Serial.printf("  Z: %.4f\n", _data.body_gyro_bias_z);
 
-    DBG_PRINTLN("\nKafa IMU Jiroskop Sapmasi (derece/s):");
-    DBG_PRINTF("  X: %.4f\n", _data.head_gyro_bias_x);
-    DBG_PRINTF("  Y: %.4f\n", _data.head_gyro_bias_y);
-    DBG_PRINTF("  Z: %.4f\n", _data.head_gyro_bias_z);
+    Serial.println("\nKafa IMU Jiroskop Sapmasi (derece/s):");
+    Serial.printf("  X: %.4f\n", _data.head_gyro_bias_x);
+    Serial.printf("  Y: %.4f\n", _data.head_gyro_bias_y);
+    Serial.printf("  Z: %.4f\n", _data.head_gyro_bias_z);
 
-    DBG_PRINTLN("\nEncoder Sifir Konumlari (derece):");
-    DBG_PRINTF("  Pan:  %.2f\n", _data.pan_encoder_zero);
-    DBG_PRINTF("  Tilt: %.2f\n", _data.tilt_encoder_zero);
+    Serial.println("\nEncoder Sifir Konumlari (derece):");
+    Serial.printf("  Pan:  %.2f\n", _data.pan_encoder_zero);
+    Serial.printf("  Tilt: %.2f\n", _data.tilt_encoder_zero);
 
-    DBG_PRINTLN("\nMekanik Limitler (derece):");
-    DBG_PRINTF("  Pan:  [%.2f, %.2f]\n", _data.pan_min, _data.pan_max);
-    DBG_PRINTF("  Tilt: [%.2f, %.2f]\n", _data.tilt_min, _data.tilt_max);
+    Serial.println("\nMekanik Limitler (derece):");
+    Serial.printf("  Pan:  [%.2f, %.2f]\n", _data.pan_min, _data.pan_max);
+    Serial.printf("  Tilt: [%.2f, %.2f]\n", _data.tilt_min, _data.tilt_max);
 
-    DBG_PRINTF("\nCRC: 0x%08X\n", _data.crc);
-    DBG_PRINTLN("==========================================\n");
+    Serial.printf("\nCRC: 0x%08X\n", _data.crc);
+    Serial.println("==========================================\n");
 }
 
 uint32_t SensorCalibration::calculateCRC(const CalibrationData &data) const {

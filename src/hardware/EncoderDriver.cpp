@@ -16,7 +16,7 @@ bool EncoderDriver::begin(SoftI2C &wire, uint8_t address, bool invertDirection) 
 
     uint8_t status;
     if (!readRegister(REG_STATUS, status)) {
-        DBG_PRINTF("Encoder @ 0x%02X: Yanit yok\n", _address);
+        Serial.printf("Encoder @ 0x%02X: Yanit yok\n", _address);
         return false;
     }
 
@@ -25,9 +25,9 @@ bool EncoderDriver::begin(SoftI2C &wire, uint8_t address, bool invertDirection) 
 
     MagnetStatus magStatus = getMagnetStatus();
     if (magStatus == MAGNET_GOOD) {
-        DBG_PRINTF("Encoder @ 0x%02X: Baslatildi (miknatis iyi)\n", _address);
+        Serial.printf("Encoder @ 0x%02X: Baslatildi (miknatis iyi)\n", _address);
     } else {
-        DBG_PRINTF(
+        Serial.printf(
             "Encoder @ 0x%02X: UYARI - Miknatis durumu = %d (2=iyi)\n",
             _address, magStatus
         );
@@ -41,7 +41,7 @@ bool EncoderDriver::readRawAngle(uint16_t &raw) {
         _readFailures++;
         _consecutiveFailures++;
         if (_consecutiveFailures >= 5) {
-            DBG_PRINTLN("Encoder: I2C kurtarma yapiliyor...");
+            Serial.println("Encoder: I2C kurtarma yapiliyor...");
             _wire->recover();
             _consecutiveFailures = 0;
         }

@@ -30,7 +30,7 @@ bool IMUDriver::begin(TwoWire &wire, uint8_t sda, uint8_t scl, uint8_t address) 
         delay(20);
     }
     if (chipID != CHIP_ID_BMI160) {
-        DBG_PRINTF("IMU @ 0x%02X: Yanlis cip ID 0x%02X (beklenen 0x%02X)\n",
+        Serial.printf("IMU @ 0x%02X: Yanlis cip ID 0x%02X (beklenen 0x%02X)\n",
                       _address, chipID, CHIP_ID_BMI160);
         return false;
     }
@@ -44,12 +44,12 @@ bool IMUDriver::begin(TwoWire &wire, uint8_t sda, uint8_t scl, uint8_t address) 
     writeRegister(REG_CMD, CMD_GYR_PM_NORMAL);//jiroskop aktifleşti
     delay(100);
 
-    DBG_PRINTF("IMU @ 0x%02X: Baslatildi\n", _address);
+    Serial.printf("IMU @ 0x%02X: Baslatildi\n", _address);
     return true;
 }
 
 bool IMUDriver::recover() {
-    DBG_PRINTF("IMU @ 0x%02X: I2C kurtarma yapiliyor...\n", _address);
+    Serial.printf("IMU @ 0x%02X: I2C kurtarma yapiliyor...\n", _address);
 
     _wire->end();
 
@@ -71,16 +71,16 @@ bool IMUDriver::recover() {
 
     // IMU'yu yeniden başlat
     if (!begin(*_wire, _sda, _scl, _address)) {
-        DBG_PRINTF("IMU @ 0x%02X: Kurtarma basarisiz\n", _address);
+        Serial.printf("IMU @ 0x%02X: Kurtarma basarisiz\n", _address);
         return false;
     }
     if (!configure(_cfgAccelRange, _cfgGyroRange, _cfgOdr)) {
-        DBG_PRINTF("IMU @ 0x%02X: Kurtarma sonrasi yapilandirma basarisiz\n", _address);
+        Serial.printf("IMU @ 0x%02X: Kurtarma sonrasi yapilandirma basarisiz\n", _address);
         return false;
     }
 
     _consecutiveFailures = 0;
-    DBG_PRINTF("IMU @ 0x%02X: Kurtarma basarili\n", _address);
+    Serial.printf("IMU @ 0x%02X: Kurtarma basarili\n", _address);
     return true;
 }
 
@@ -90,14 +90,14 @@ bool IMUDriver::configure(uint8_t accelRange, uint16_t gyroRange, uint16_t odr) 
     _cfgOdr        = odr;
     // İvmeölçer aralığını yapılandır
     if (!writeRegister(REG_ACC_RANGE, accelRange)) {
-        DBG_PRINTLN("IMU: Ivmeolcer aralik yapilandirmasi basarisiz");
+        Serial.println("IMU: Ivmeolcer aralik yapilandirmasi basarisiz");
         return false;
     }
     setAccelScale(accelRange);  // Dönüşüm katsayısını güncelle
 
     // Jiroskop aralığını yapılandır
     if (!writeRegister(REG_GYR_RANGE, gyroRange)) {
-        DBG_PRINTLN("IMU: Jiroskop aralik yapilandirmasi basarisiz");
+        Serial.println("IMU: Jiroskop aralik yapilandirmasi basarisiz");
         return false;
     }
     setGyroScale(gyroRange);  // Dönüşüm katsayısını güncelle
@@ -114,17 +114,17 @@ bool IMUDriver::configure(uint8_t accelRange, uint16_t gyroRange, uint16_t odr) 
     // İvmeölçer ODR ve modunu ayarla
     // 0x20 biti normal bant genişliği modunu seçer
     if (!writeRegister(REG_ACC_CONF, odr_bits | 0x20)) {
-        DBG_PRINTLN("IMU: Ivmeolcer ODR yapilandirmasi basarisiz");
+        Serial.println("IMU: Ivmeolcer ODR yapilandirmasi basarisiz");
         return false;
     }
 
     // Jiroskop ODR ve modunu ayarla
     if (!writeRegister(REG_GYR_CONF, odr_bits | 0x20)) {
-        DBG_PRINTLN("IMU: Jiroskop ODR yapilandirmasi basarisiz");
+        Serial.println("IMU: Jiroskop ODR yapilandirmasi basarisiz");
         return false;
     }
 
-    DBG_PRINTF("IMU @ 0x%02X: Yapilandirildi (ODR=%d Hz)\n", _address, odr);
+    Serial.printf("IMU @ 0x%02X: Yapilandirildi (ODR=%d Hz)\n", _address, odr);
     return true;
 }
 
@@ -183,7 +183,7 @@ bool IMUDriver::read(IMUData &data) {
 }
 
 bool IMUDriver::calibrateGyro(uint16_t samples) {//Jiroskop kalibrasyonu
-    DBG_PRINTF("Jiroskop kalibre ediliyor @ 0x%02X (%d ornek)...\n", _address, samples);
+    Serial.printf("Jiroskop kalibre ediliyor @ 0x%02X (%d ornek)...\n", _address, samples);
 
     float sum_x = 0, sum_y = 0, sum_z = 0;
     uint16_t valid_samples = 0;
@@ -199,13 +199,13 @@ bool IMUDriver::calibrateGyro(uint16_t samples) {//Jiroskop kalibrasyonu
         delay(1);
 
         if ((i + 1) % 100 == 0) {
-            DBG_PRINT(".");
+            Serial.print(".");
         }
     }
-    DBG_PRINTLN();
+    Serial.println();
 
     if (valid_samples < samples / 2) {
-        DBG_PRINTLN("Jiroskop kalibrasyonu basarisiz: cok fazla okuma hatasi");
+        Serial.println("Jiroskop kalibrasyonu basarisiz: cok fazla okuma hatasi");
         return false;
     }
 
@@ -214,7 +214,7 @@ bool IMUDriver::calibrateGyro(uint16_t samples) {//Jiroskop kalibrasyonu
     _gyroBiasY = sum_y / valid_samples;
     _gyroBiasZ = sum_z / valid_samples;
 
-    DBG_PRINTF("Jiroskop sapmasi: [%.3f, %.3f, %.3f] derece/s\n",
+    Serial.printf("Jiroskop sapmasi: [%.3f, %.3f, %.3f] derece/s\n",
                   _gyroBiasX, _gyroBiasY, _gyroBiasZ);
 
     return true;

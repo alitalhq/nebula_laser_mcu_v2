@@ -27,12 +27,12 @@ ParallelIMUReader::~ParallelIMUReader() {
 
 bool ParallelIMUReader::begin(IMUDriver *bodyIMU, IMUDriver *headIMU) {
     if (_running) {
-        DBG_PRINTLN("ParallelIMUReader: Zaten calisiyor");
+        Serial.println("ParallelIMUReader: Zaten calisiyor");
         return false;
     }
 
     if (!bodyIMU || !headIMU) {
-        DBG_PRINTLN("ParallelIMUReader: Gecersiz IMU isaretcileri");
+        Serial.println("ParallelIMUReader: Gecersiz IMU isaretcileri");
         return false;
     }
 
@@ -47,7 +47,7 @@ bool ParallelIMUReader::begin(IMUDriver *bodyIMU, IMUDriver *headIMU) {
     _dataMutex = xSemaphoreCreateMutex();      // Veri erisim korumasi
 
     if (!_bodyStartSem || !_headStartSem || !_bodyDoneSem || !_headDoneSem || !_dataMutex) {
-        DBG_PRINTLN("ParallelIMUReader: Semaphore olusturulamadi");
+        Serial.println("ParallelIMUReader: Semaphore olusturulamadi");
         end();
         return false;
     }
@@ -69,7 +69,7 @@ bool ParallelIMUReader::begin(IMUDriver *bodyIMU, IMUDriver *headIMU) {
     );
 
     if (result1 != pdPASS) {
-        DBG_PRINTLN("ParallelIMUReader: Govde gorevi olusturulamadi");
+        Serial.println("ParallelIMUReader: Govde gorevi olusturulamadi");
         end();
         return false;
     }
@@ -85,13 +85,13 @@ bool ParallelIMUReader::begin(IMUDriver *bodyIMU, IMUDriver *headIMU) {
     );
 
     if (result2 != pdPASS) {
-        DBG_PRINTLN("ParallelIMUReader: Kafa gorevi olusturulamadi");
+        Serial.println("ParallelIMUReader: Kafa gorevi olusturulamadi");
         end();
         return false;
     }
 
     _running = true;
-    DBG_PRINTLN("ParallelIMUReader: Kalici gorevler ile baslatildi");
+    Serial.println("ParallelIMUReader: Kalici gorevler ile baslatildi");
 
     return true;
 }
@@ -235,7 +235,7 @@ void ParallelIMUReader::resetStats() {
 void ParallelIMUReader::bodyReadTaskFunc(void *param) {
     ParallelIMUReader *reader = static_cast<ParallelIMUReader*>(param);
 
-    DBG_PRINTLN("GovdeIMUGorev: Basladi (kalici)");
+    Serial.println("GovdeIMUGorev: Basladi (kalici)");
 
     while (!reader->_stopRequested) {
         // Tetikleme sinyali bekle (suresiz bloke olur)
@@ -259,14 +259,14 @@ void ParallelIMUReader::bodyReadTaskFunc(void *param) {
         xSemaphoreGive(reader->_bodyDoneSem);
     }
 
-    DBG_PRINTLN("GovdeIMUGorev: Cikiyor");
+    Serial.println("GovdeIMUGorev: Cikiyor");
     vTaskDelete(NULL);  // Gorevi sil
 }
 
 void ParallelIMUReader::headReadTaskFunc(void *param) {
     ParallelIMUReader *reader = static_cast<ParallelIMUReader*>(param);
 
-    DBG_PRINTLN("KafaIMUGorev: Basladi (kalici)");
+    Serial.println("KafaIMUGorev: Basladi (kalici)");
 
     while (!reader->_stopRequested) {
         if (xSemaphoreTake(reader->_headStartSem, portMAX_DELAY) != pdTRUE) {
@@ -290,6 +290,6 @@ void ParallelIMUReader::headReadTaskFunc(void *param) {
         xSemaphoreGive(reader->_headDoneSem);
     }
 
-    DBG_PRINTLN("KafaIMUGorev: Cikiyor");
+    Serial.println("KafaIMUGorev: Cikiyor");
     vTaskDelete(NULL);
 }

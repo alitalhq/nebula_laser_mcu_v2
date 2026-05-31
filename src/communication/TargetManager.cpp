@@ -48,11 +48,11 @@ bool TargetManager::begin(float initialPan, float initialTilt) {
 
     _mutex = xSemaphoreCreateMutex();
     if (!_mutex) {
-        DBG_PRINTLN("TargetManager: Mutex olusturulamadi");
+        Serial.println("TargetManager: Mutex olusturulamadi");
         return false;
     }
 
-    DBG_PRINTF("TargetManager: Baslatildi (zaman asimi=%ums)\n", _commandTimeoutMs);
+    Serial.printf("TargetManager: Baslatildi (zaman asimi=%ums)\n", _commandTimeoutMs);
     return true;
 }
 
@@ -210,7 +210,7 @@ void TargetManager::processPendingNotification() {
     const char* newModeStr = (_pendingNotif.newMode == MODE_GROUND_LOCK) ? "YER_KILIT" :
                              (_pendingNotif.newMode == MODE_TRACKING)    ? "TAKIP"     : "JOYSTICK";
 
-    DBG_PRINTF("TargetManager: Mod %s -> %s (%s)\n", oldModeStr, newModeStr, _pendingNotif.reason);
+    Serial.printf("TargetManager: Mod %s -> %s (%s)\n", oldModeStr, newModeStr, _pendingNotif.reason);
 
     g_buzzer.modeChange();
 }

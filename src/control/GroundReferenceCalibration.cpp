@@ -12,21 +12,21 @@ GroundReferenceCalibration::GroundReferenceCalibration()
 }
 
 bool GroundReferenceCalibration::calibrate(IMUDriver &bodyIMU, uint16_t samples) {
-    DBG_PRINTLN("\n========== YER REFERANSI KALIBRASYONU ==========");
-    DBG_PRINTLN("Bu kalibrasyon 'gercek asagi' yonunu belirler");
-    DBG_PRINTLN("");
-    DBG_PRINTLN("GEREKSINIMLER:");
-    DBG_PRINTLN("  1. Drone'u DUZ ZEMINE yerlestirin");
-    DBG_PRINTLN("  2. Drone HAREKETSIZ olmali (titresim yok)");
-    DBG_PRINTLN("  3. Gimbal HERHANGI bir acida olabilir (otomatik ayarlanir)");
-    DBG_PRINTLN("");
-    DBG_PRINTLN("Kalibrasyon 3 saniye icinde basliyor...");
+    Serial.println("\n========== YER REFERANSI KALIBRASYONU ==========");
+    Serial.println("Bu kalibrasyon 'gercek asagi' yonunu belirler");
+    Serial.println("");
+    Serial.println("GEREKSINIMLER:");
+    Serial.println("  1. Drone'u DUZ ZEMINE yerlestirin");
+    Serial.println("  2. Drone HAREKETSIZ olmali (titresim yok)");
+    Serial.println("  3. Gimbal HERHANGI bir acida olabilir (otomatik ayarlanir)");
+    Serial.println("");
+    Serial.println("Kalibrasyon 3 saniye icinde basliyor...");
     delay(3000);
 
     float sum_ax = 0, sum_ay = 0, sum_az = 0;
     uint16_t valid_samples = 0;
 
-    DBG_PRINTF("%d ornek toplaniyor", samples);
+    Serial.printf("%d ornek toplaniyor", samples);
 
     for (uint16_t i = 0; i < samples; i++) {
         IMUDriver::IMUData data;
@@ -41,15 +41,15 @@ bool GroundReferenceCalibration::calibrate(IMUDriver &bodyIMU, uint16_t samples)
         valid_samples++;
 
         if ((i + 1) % 100 == 0) {
-            DBG_PRINT(".");
+            Serial.print(".");
         }
 
         delay(1);
     }
-    DBG_PRINTLN(" Tamamlandi!");
+    Serial.println(" Tamamlandi!");
 
     if (valid_samples < samples / 2) {
-        DBG_PRINTLN("HATA: Cok fazla basarisiz okuma");
+        Serial.println("HATA: Cok fazla basarisiz okuma");
         return false;
     }
 
@@ -67,9 +67,9 @@ bool GroundReferenceCalibration::calibrate(IMUDriver &bodyIMU, uint16_t samples)
 
     _reference.calibrated = true;
 
-    DBG_PRINTLN("\n[OK] Yer referansi kalibrasyonu BASARILI");
+    Serial.println("\n[OK] Yer referansi kalibrasyonu BASARILI");
     printCalibration();
-    DBG_PRINTLN("==========================================\n");
+    Serial.println("==========================================\n");
 
     return true;
 }
@@ -100,26 +100,26 @@ void GroundReferenceCalibration::printCalibration() const {
                           _reference.ay * _reference.ay +
                           _reference.az * _reference.az);
 
-    DBG_PRINTLN("Kalibrasyon Sonuclari:");
-    DBG_PRINTF("  Yercekimi vektoru: [%.3f, %.3f, %.3f] m/s2\n",
+    Serial.println("Kalibrasyon Sonuclari:");
+    Serial.printf("  Yercekimi vektoru: [%.3f, %.3f, %.3f] m/s2\n",
                   _reference.ax, _reference.ay, _reference.az);
-    DBG_PRINTF("  Buyukluk: %.3f m/s2 (nominal: 9.81)\n", magnitude);
-    DBG_PRINTF("  Referans pitch: %.2f derece\n", _reference.pitch);
-    DBG_PRINTF("  Referans roll: %.2f derece\n", _reference.roll);
+    Serial.printf("  Buyukluk: %.3f m/s2 (nominal: 9.81)\n", magnitude);
+    Serial.printf("  Referans pitch: %.2f derece\n", _reference.pitch);
+    Serial.printf("  Referans roll: %.2f derece\n", _reference.roll);
 
     if (fabs(magnitude - 9.81f) > 2.0f) {
-        DBG_PRINTLN("  [!] UYARI: Yercekimi buyuklugu anormal - sensor hatali olabilir");
+        Serial.println("  [!] UYARI: Yercekimi buyuklugu anormal - sensor hatali olabilir");
     }
 
     if (fabs(_reference.pitch) > 5.0f) {
-        DBG_PRINTLN("  [!] UYARI: Pitch > 5 derece - drone duz olmayabilir");
+        Serial.println("  [!] UYARI: Pitch > 5 derece - drone duz olmayabilir");
     }
 
     if (fabs(_reference.roll) > 5.0f) {
-        DBG_PRINTLN("  [!] UYARI: Roll > 5 derece - drone duz olmayabilir");
+        Serial.println("  [!] UYARI: Roll > 5 derece - drone duz olmayabilir");
     }
     
     if (fabs(_reference.pitch) < 2.0f && fabs(_reference.roll) < 2.0f) {
-        DBG_PRINTLN("  [OK] Drone kalibrasyon sirasinda duz idi");
+        Serial.println("  [OK] Drone kalibrasyon sirasinda duz idi");
     }
 }
