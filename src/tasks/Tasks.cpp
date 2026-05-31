@@ -550,7 +550,7 @@ void serialTask(void *params) {//serial iletişim görevi
             // Olustur ve gonder
             uint8_t txBuffer[32];
             size_t len = protocol.buildTelemetry(telem, txBuffer);
-            Serial.write(txBuffer, len);
+            // Serial.write(txBuffer, len);  // TODO: ROS entegrasyonu hazır olunca aç
         }
 
         if (millis() - lastPrintTime > 5000) {
