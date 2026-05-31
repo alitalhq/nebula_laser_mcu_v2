@@ -1,7 +1,4 @@
-#include "LimitEnforcer.h"//hedef açıları gimbalın hareket sınırları içerisinde tutar
-//güvenli bölgede tam yetki
-//yumuşak limitte kontrol kademe kademe azaltılır
-//sert limitte zorunlu durdurma
+#include "LimitEnforcer.h"
 
 LimitEnforcer::LimitEnforcer()
     : _panAtMin(false), _panAtMax(false)
@@ -31,125 +28,69 @@ void LimitEnforcer::enforce(
         return;
     }
 
-    //PAN EKSENİ İÇİN LİMİT KONTROLLERİ
+    // Home'dan açısal sapma — dairesel, wrap-around güvenli
+    // Pozitif = saat yönünde, negatif = saat yönü tersi
+    float devPan  = MathUtils::angularError(currentEncoderPan,  _cfg.pan_offset);
+    float devTilt = MathUtils::angularError(currentEncoderTilt, _cfg.tilt_offset);
 
-    _panAtMin = false;
-    _panAtMax = false;
+    // ── PAN ──────────────────────────────────────────────────────────────
 
-    // Yumusak limit bolgesinde mi kontrol et (minimum limite yaklasma)
-    if (currentEncoderPan <= _cfg.pan_min + _cfg.soft_margin) {
-        // Minimum limite yaklasiliyor
+    _panAtMin = (devPan <= -_cfg.pan_range);
+    _panAtMax = (devPan >=  _cfg.pan_range);
 
-        // Olcek faktoru hesapla (1.0 → 0.0)
-        float scale = computeScaleFactor(
-            currentEncoderPan,
-            _cfg.pan_min,
-            _cfg.soft_margin,
-            velocityPan < 0  // Negatif hiz = limite yaklasma
-        );
+    if (_panAtMin) {
+        velocityPan    = MathUtils::clamp(velocityPan, 0.0f, 1000.0f);
+        worldTargetPan = MathUtils::wrapAngle360(_cfg.pan_offset - _cfg.pan_range) + deltaIMUPan;
+    } else if (_panAtMax) {
+        velocityPan    = MathUtils::clamp(velocityPan, -1000.0f, 0.0f);
+        worldTargetPan = MathUtils::wrapAngle360(_cfg.pan_offset + _cfg.pan_range) + deltaIMUPan;
+    } else {
+        float distToMin = devPan + _cfg.pan_range;   // 0 = min limitte, artar uzaklaştıkça
+        float distToMax = _cfg.pan_range - devPan;   // 0 = max limitte, artar uzaklaştıkça
 
-        // Pozisyon kontrolunu olceklendir
-        velocityPan *= scale;
-
-        // Limite dogru hareketi engelle
-        if (velocityPan < 0) {
-            velocityPan = 0;
+        if (distToMin < _cfg.soft_margin && velocityPan < 0) {
+            float scale = MathUtils::clamp(distToMin / _cfg.soft_margin, 0.0f, 1.0f);
+            velocityPan *= scale;
+            if (velocityPan < 0) velocityPan = 0.0f;
+        }
+        if (distToMax < _cfg.soft_margin && velocityPan > 0) {
+            float scale = MathUtils::clamp(distToMax / _cfg.soft_margin, 0.0f, 1.0f);
+            velocityPan *= scale;
+            if (velocityPan > 0) velocityPan = 0.0f;
         }
     }
 
-    // Yumusak limit bolgesinde mi kontrol et (maksimum limite yaklasma)
-    if (currentEncoderPan >= _cfg.pan_max - _cfg.soft_margin) {
-        // Maksimum limite yaklasiliyor
+    // ── TILT ─────────────────────────────────────────────────────────────
 
-        float scale = computeScaleFactor(
-            currentEncoderPan,
-            _cfg.pan_max,
-            _cfg.soft_margin,
-            velocityPan > 0  // Pozitif hiz = limite yaklasma
-        );
+    _tiltAtMin = (devTilt <= -_cfg.tilt_range);
+    _tiltAtMax = (devTilt >=  _cfg.tilt_range);
 
-        velocityPan *= scale;
+    if (_tiltAtMin) {
+        velocityTilt    = MathUtils::clamp(velocityTilt, 0.0f, 1000.0f);
+        worldTargetTilt = MathUtils::wrapAngle360(_cfg.tilt_offset - _cfg.tilt_range) + deltaIMUTilt;
+    } else if (_tiltAtMax) {
+        velocityTilt    = MathUtils::clamp(velocityTilt, -1000.0f, 0.0f);
+        worldTargetTilt = MathUtils::wrapAngle360(_cfg.tilt_offset + _cfg.tilt_range) + deltaIMUTilt;
+    } else {
+        float distToMin = devTilt + _cfg.tilt_range;
+        float distToMax = _cfg.tilt_range - devTilt;
 
-        // Limite dogru hareketi engelle
-        if (velocityPan > 0) {
-            velocityPan = 0;
+        if (distToMin < _cfg.soft_margin && velocityTilt < 0) {
+            float scale = MathUtils::clamp(distToMin / _cfg.soft_margin, 0.0f, 1.0f);
+            velocityTilt *= scale;
+            if (velocityTilt < 0) velocityTilt = 0.0f;
         }
-    }
-
-    // Sert limit kontrolu (minimum)
-    if (currentEncoderPan <= _cfg.pan_min) {
-        _panAtMin = true;  // Pan minimum limite ulasti
-        // Sadece pozitif harekete (limitten uzaklasma) izin ver
-        velocityPan = MathUtils::clamp(velocityPan, 0, 1000);
-
-        // Dunya hedefini ulasilabilir degere ayarla
-        // IMU deltasi eklenir cunku dunya referansi encoder + IMU
-        worldTargetPan = _cfg.pan_min + deltaIMUPan;
-    }
-
-    // Sert limit kontrolu (maksimum)
-    if (currentEncoderPan >= _cfg.pan_max) {
-        _panAtMax = true;  // Pan maksimum limite ulasti
-        // Sadece negatif harekete (limitten uzaklasma) izin ver
-        velocityPan = MathUtils::clamp(velocityPan, -1000, 0);
-
-        worldTargetPan = _cfg.pan_max + deltaIMUPan;
-    }
-
-    //TILT EKSENİ İÇİN LİMİT KONTROLLERİ
-
-    _tiltAtMin = false;
-    _tiltAtMax = false;
-
-    if (currentEncoderTilt <= _cfg.tilt_min + _cfg.soft_margin) {
-        float scale = computeScaleFactor(
-            currentEncoderTilt,
-            _cfg.tilt_min,
-            _cfg.soft_margin,
-            velocityTilt < 0
-        );
-
-        velocityTilt *= scale;
-
-        if (velocityTilt < 0) {
-            velocityTilt = 0;
+        if (distToMax < _cfg.soft_margin && velocityTilt > 0) {
+            float scale = MathUtils::clamp(distToMax / _cfg.soft_margin, 0.0f, 1.0f);
+            velocityTilt *= scale;
+            if (velocityTilt > 0) velocityTilt = 0.0f;
         }
-    }
-
-    if (currentEncoderTilt >= _cfg.tilt_max - _cfg.soft_margin) {
-        float scale = computeScaleFactor(
-            currentEncoderTilt,
-            _cfg.tilt_max,
-            _cfg.soft_margin,
-            velocityTilt > 0
-        );
-
-        velocityTilt *= scale;
-
-        if (velocityTilt > 0) {
-            velocityTilt = 0;
-        }
-    }
-
-    if (currentEncoderTilt <= _cfg.tilt_min) {
-        _tiltAtMin = true;
-        velocityTilt = MathUtils::clamp(velocityTilt, 0, 1000);
-        worldTargetTilt = _cfg.tilt_min + deltaIMUTilt;
-    }
-
-    if (currentEncoderTilt >= _cfg.tilt_max) {
-        _tiltAtMax = true;
-        velocityTilt = MathUtils::clamp(velocityTilt, -1000, 0);
-        worldTargetTilt = _cfg.tilt_max + deltaIMUTilt;
     }
 }
 
 bool LimitEnforcer::isAtLimit(bool pan, bool positive) const {
-    if (pan) {
-        return positive ? _panAtMax : _panAtMin;
-    } else {
-        return positive ? _tiltAtMax : _tiltAtMin;
-    }
+    if (pan) return positive ? _panAtMax : _panAtMin;
+    else     return positive ? _tiltAtMax : _tiltAtMin;
 }
 
 void LimitEnforcer::setConfig(const LimitConfig &cfg) {
@@ -157,27 +98,6 @@ void LimitEnforcer::setConfig(const LimitConfig &cfg) {
 }
 
 void LimitEnforcer::reset() {
-    _panAtMin = false;
-    _panAtMax = false;
-    _tiltAtMin = false;
-    _tiltAtMax = false;
-}
-
-float LimitEnforcer::computeScaleFactor(float current, float limitValue, float margin, bool approaching) {
-    if (!approaching) {
-        return 1.0f;
-    }
-
-    float distanceToLimit = fabsf(current - limitValue);
-
-    float scale = distanceToLimit / margin;
-    return MathUtils::clamp(scale, 0.0f, 1.0f);
-}
-
-bool LimitEnforcer::isApproachingLimit(float velocity, bool positiveLimit) {
-    if (positiveLimit) {
-        return velocity > 0;
-    } else {
-        return velocity < 0;
-    }
+    _panAtMin = _panAtMax = false;
+    _tiltAtMin = _tiltAtMax = false;
 }

@@ -265,7 +265,7 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
     enum GimbalMode : uint8_t { MODE_LEVELING, MODE_STABILIZE, MODE_TARGET };
     GimbalMode gimbalMode = MODE_LEVELING;
 
-    uint32_t levelStableStart = 0;  // kararlı seviyeleme başlangıcı
+    uint32_t levelStableStart = 0;
     uint32_t levelingStart    = millis();
 
     Serial.println("[POS] LEVELING modunda — yere paralel konuma getiriliyor...");
@@ -424,10 +424,24 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
             POSITION_PERIOD_MS / 1000.0f
         );
 
-        // Limit hedefi ayarladiysa guncelle
-        if (limiter.isAtLimit(true, false) || limiter.isAtLimit(true, true) ||
-            limiter.isAtLimit(false, false) || limiter.isAtLimit(false, true)) {
-            g_targetMgr.setTarget(targetPan, targetTilt);
+        // Limit: süre aşılırsa home konumuna (0°,0° IMU) yönlendir
+        {
+            static uint32_t limitHoldStart = 0;
+            static constexpr uint32_t LIMIT_HOLD_MS = 500;
+
+            bool atAnyLimit = limiter.isAtLimit(true, false)  || limiter.isAtLimit(true, true) ||
+                              limiter.isAtLimit(false, false) || limiter.isAtLimit(false, true);
+
+            if (atAnyLimit) {
+                if (limitHoldStart == 0) limitHoldStart = millis();
+
+                if (millis() - limitHoldStart >= LIMIT_HOLD_MS) {
+                    targetPan  = 0.0f;
+                    targetTilt = 0.0f;
+                }
+            } else {
+                limitHoldStart = 0;
+            }
         }
 
 

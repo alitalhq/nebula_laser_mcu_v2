@@ -62,21 +62,15 @@ struct CombinerConfig {
 
 // LimitEnforcer parametreleri
 struct LimitConfig {
-    // Mekanik limitler (kalibrasyon ile geçersiz kılınabilir)
-    // Bu değerler, gimbal'ın fiziksel hareket sınırlarını tanımlar
-    float pan_min  = -30.0f;    // Pan minimum açısı (derece)
+    // Encoder home açıları — manuel girilir, motorlar durmadayken ölçülür
+    float pan_offset  = 180.0f;  // pan encoder home açısı  (0-360°)
+    float tilt_offset = 180.0f;  // tilt encoder home açısı (0-360°)
 
-    float pan_max  = 30.0f;     // Pan maksimum açısı (derece)
+    // Home'dan her iki yönde izin verilen max sapma
+    float pan_range  = 30.0f;   // derece
+    float tilt_range = 20.0f;   // derece
 
-    float tilt_min = -20.0f;    // Tilt minimum açısı (derece)
-
-    float tilt_max = 20.0f;     // Tilt maksimum açısı (derece)
-
-    // Yumuşak limit marjı (Bölge 2 boyutu)
-    // Sert limite yaklaşırken hız kademeli olarak azaltılır
-    float soft_margin = 5.0f;   // derece
-
-    // Limit uygulamasını etkinleştir/devre dışı bırak (test için)
+    float soft_margin = 5.0f;
     bool enforce_limits = true;
 };
 

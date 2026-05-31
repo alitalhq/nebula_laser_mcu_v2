@@ -35,18 +35,6 @@ private:
 
     bool _panAtMin, _panAtMax;
     bool _tiltAtMin, _tiltAtMax;
-
-    float computeScaleFactor(
-        float current,
-        float limitValue,
-        float margin,
-        bool approaching
-    );
-
-    bool isApproachingLimit(
-        float velocity,
-        bool positiveLimit
-    );
 };
 
 #endif
