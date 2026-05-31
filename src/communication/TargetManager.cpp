@@ -2,6 +2,7 @@
 #include "SerialProtocol.h"
 #include "../utils/MathUtils.h"
 #include "../hardware/BuzzerDriver.h"
+#include "../config/HardwareConfig.h"
 
 extern BuzzerDriver g_buzzer;
 
@@ -80,6 +81,8 @@ void TargetManager::handleCommand(const SerialProtocol::GimbalCommand &cmd) {
         // JOYSTICK: feedforward alani hiz komutu olarak kullanilir
         _feedforwardPan  = cmd.feedforward_vel_pan;
         _feedforwardTilt = cmd.feedforward_vel_tilt;
+
+        digitalWrite(LASER_PIN, cmd.laser_fire ? HIGH : LOW);
 
         xSemaphoreGive(_mutex);
         processPendingNotification();
