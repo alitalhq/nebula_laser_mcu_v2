@@ -245,7 +245,9 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
     tiltFilter.begin(ENCODER_FILTER_WINDOW);
     posCtrl.begin(g_posConfig);
     combiner.begin(g_combinerConfig);
-    limiter.begin(g_limitConfig);
+    LimitConfig limitCfgDisabled = g_limitConfig;
+    limitCfgDisabled.enforce_limits = false;
+    limiter.begin(limitCfgDisabled);  // leveling tamamlanana kadar devre dışı
     groundLockCtrl.begin();
 
     extern GroundReferenceCalibration g_groundRef;
@@ -336,6 +338,7 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
             if (pitchOK && rollOK) {
                 if (levelStableStart == 0) levelStableStart = millis();
                 if (millis() - levelStableStart >= 1000) {
+                    limiter.setConfig(g_limitConfig);  // limitler aktif
                     posCtrl.resetIntegral();
                     g_targetMgr.setGroundLockTarget(0.0f, 0.0f);
                     gimbalMode = MODE_STABILIZE;
@@ -347,6 +350,7 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
 
             // 15 saniye zaman aşımı: ne olursa olsun devam et
             if (millis() - levelingStart >= 15000) {
+                limiter.setConfig(g_limitConfig);  // limitler aktif
                 posCtrl.resetIntegral();
                 g_targetMgr.setGroundLockTarget(0.0f, 0.0f);
                 gimbalMode = MODE_STABILIZE;

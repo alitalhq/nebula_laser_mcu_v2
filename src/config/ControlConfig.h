@@ -34,8 +34,8 @@ struct PositionConfig {
     float kd_tilt    = 4.5f;    //4.5 [TUNING adim 2] simdilik sifir
     float i_max_tilt = 10.0f;
 
-    float deadzone_pan  = 1.5f;  // GROUND_LOCK — titreşimi bastırır
-    float deadzone_tilt = 1.5f;
+    float deadzone_pan  = 2.0f;  // GROUND_LOCK — titreşimi bastırır
+    float deadzone_tilt = 2.0f;
 
     float deadzone_pan_tracking  = 0.3f;  // TRACKING — hassas kilitleme
     float deadzone_tilt_tracking = 0.3f;
@@ -71,7 +71,7 @@ struct LimitConfig {
     float tilt_range = 20.0f;   // derece
 
     float soft_margin = 5.0f;
-    bool enforce_limits = true;
+    bool enforce_limits = false;  // offset değerleri ölçülüp girilene kadar kapalı
 };
 
 // IMUFusion parametreleri

@@ -290,13 +290,7 @@ bool loadCalibration() {//kalibrasyonu uygulama
     g_bodyIMU.setGyroBias(data.body_gyro_bias_x, data.body_gyro_bias_y, data.body_gyro_bias_z);
     g_headIMU.setGyroBias(data.head_gyro_bias_x, data.head_gyro_bias_y, data.head_gyro_bias_z);
 
-    // limitleri günceller
-    g_limitConfig.pan_min = data.pan_min;
-    g_limitConfig.pan_max = data.pan_max;
-    g_limitConfig.tilt_min = data.tilt_min;
-    g_limitConfig.tilt_max = data.tilt_max;
-    // Limitler, encoder'ın seviyeleme sıfırına göre yeniden tanımlanana kadar devre dışı.
-    g_limitConfig.enforce_limits = false;
+    // Limitler ControlConfig.h'taki pan_offset/tilt_offset/pan_range/tilt_range ile ayarlanır
 
     Serial.println("========== KALIBRASYON UYGULANDI ==========\n");
     return true;
