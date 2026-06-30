@@ -33,12 +33,15 @@ public:
 
     void resetFailureCount() { _readFailures = 0; }
 
+    bool isInitialized() const { return _initialized; }
+
 private:
     SoftI2C *_wire;
     uint8_t _address;
     uint32_t _readFailures;
     uint32_t _consecutiveFailures;
     bool _invertDirection;
+    bool _initialized;
 
     // I2C okuma yardımcıları
     bool readRegister(uint8_t reg, uint8_t &value);

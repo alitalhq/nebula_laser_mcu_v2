@@ -1,369 +1,255 @@
 #include "TMC2209Driver.h"
 
+// ─── TMC2209 Register Adresleri ──────────────────────────────────
+#define REG_GCONF       0x00
+#define REG_GSTAT       0x01
+#define REG_IHOLD_IRUN  0x10
+#define REG_TPWMTHRS    0x13
+#define REG_TCOOLTHRS   0x14
+#define REG_CHOPCONF    0x6C
+#define REG_DRV_STATUS  0x6F
+#define REG_IOIN        0x06
+#define REG_SGTHRS      0x40
+
+// ─── CRC ─────────────────────────────────────────────────────────
+uint8_t TMC2209Driver::_calcCRC(uint8_t *data, int len) {
+    uint8_t crc = 0;
+    for (int i = 0; i < len; i++) {
+        uint8_t b = data[i];
+        for (int j = 0; j < 8; j++) {
+            if ((crc >> 7) ^ (b & 0x01)) crc = (crc << 1) ^ 0x07;
+            else                           crc <<= 1;
+            b >>= 1;
+        }
+    }
+    return crc;
+}
+
+// ─── UART OKUMA ──────────────────────────────────────────────────
+bool TMC2209Driver::_read(uint8_t reg, uint32_t &value) {
+    uint8_t tx[4] = { 0x05, TMC_DRIVER_ADDRESS, reg, 0 };
+    tx[3] = _calcCRC(tx, 3);
+
+    _serial->flush();
+    while (_serial->available()) _serial->read();
+
+    _serial->write(tx, 4);
+    _serial->flush();
+
+    uint32_t t = millis();
+    while (_serial->available() < 12 && millis() - t < 50);
+
+    // Echo'yu at (4 byte)
+    for (int i = 0; i < 4 && _serial->available(); i++) _serial->read();
+
+    uint8_t rx[8];
+    int got = _serial->readBytes(rx, 8);
+    if (got < 8) return false;
+
+    uint8_t crc = _calcCRC(rx, 7);
+    if (crc != rx[7]) return false;
+
+    value = ((uint32_t)rx[3] << 24) | ((uint32_t)rx[4] << 16) |
+            ((uint32_t)rx[5] << 8)  |  (uint32_t)rx[6];
+    return true;
+}
+
+// ─── UART YAZMA ──────────────────────────────────────────────────
+void TMC2209Driver::_write(uint8_t reg, uint32_t value) {
+    uint8_t tx[8] = {
+        0x05, TMC_DRIVER_ADDRESS, (uint8_t)(reg | 0x80),
+        (uint8_t)(value >> 24), (uint8_t)(value >> 16),
+        (uint8_t)(value >> 8),  (uint8_t)(value),
+        0
+    };
+    tx[7] = _calcCRC(tx, 7);
+    _serial->write(tx, 8);
+    _serial->flush();
+    delay(2);
+}
+
+// ─── CONSTRUCTOR ─────────────────────────────────────────────────
 TMC2209Driver::TMC2209Driver()
-    : _driver(nullptr)
+    : _serial(nullptr)
     , _status(STATUS_NOT_INITIALIZED)
     , _uartOk(false)
     , _name("UNKNOWN")
-{
-}
+{}
 
+// ─── BEGIN ───────────────────────────────────────────────────────
 bool TMC2209Driver::begin(HardwareSerial &serial, uint8_t rxPin, uint8_t txPin, const char* name) {
-    _name = name;
+    _name   = name;
+    _serial = &serial;
 
     Serial.printf("TMC2209[%s]: Baslatiliyor (TX=%d, RX=%d)...\n", _name, txPin, rxPin);
 
-    // HardwareSerial'i belirtilen pinlerle baslat
     serial.begin(TMC_UART_BAUD, SERIAL_8N1, rxPin, txPin);
+    serial.setTimeout(20);
     delay(10);
 
-    // TMC2209Stepper nesnesini olustur
-    _driver = new TMC2209Stepper(&serial, TMC_RSENSE, TMC_DRIVER_ADDRESS);
-    _driver->begin();
-
-    // UART iletisimini test et (3 deneme)
+    // UART bağlantı testi (3 deneme)
     bool connected = false;
     for (int attempt = 0; attempt < 3; attempt++) {
-        if (testConnection()) {
-            connected = true;
-            break;
-        }
-        Serial.printf("TMC2209[%s]: Deneme %d basarisiz, tekrar deneniyor...\n", _name, attempt + 1);
+        if (testConnection()) { connected = true; break; }
+        Serial.printf("TMC2209[%s]: Deneme %d basarisiz\n", _name, attempt + 1);
         delay(50);
     }
 
     _uartOk = connected;
     if (!connected) {
-        Serial.printf("TMC2209[%s]: UYARI - UART baglantisi yok, standalone modda devam ediliyor\n", _name);
+        Serial.printf("TMC2209[%s]: UYARI - UART yok, standalone modda devam\n", _name);
     } else {
-        Serial.printf("TMC2209[%s]: UART iletisim basarili (version=0x21)\n", _name);
+        Serial.printf("TMC2209[%s]: UART baglantisi basarili\n", _name);
     }
 
-    // Surucuyu yapilandir
     if (!configure()) {
         Serial.printf("TMC2209[%s]: HATA - Yapilandirma basarisiz!\n", _name);
         _status = STATUS_CONFIG_ERROR;
         return false;
     }
 
-    // Yapilandirmayi dogrula
-    if (!verifyConfiguration()) {
-        Serial.printf("TMC2209[%s]: UYARI - Dogrulama basarisiz\n", _name);
-    }
+    verifyConfiguration();
 
     _status = STATUS_OK;
-    Serial.printf("TMC2209[%s]: Basarili - %dmA RMS, %d mikro adim, StealthChop etkin\n",
+    Serial.printf("TMC2209[%s]: Hazir — %dmA RMS, %d mikro adim, StealthChop\n",
                   _name, TMC_RMS_CURRENT, TMC_MICROSTEPS);
     return true;
 }
 
+// ─── BAĞLANTI TESTİ ──────────────────────────────────────────────
 bool TMC2209Driver::testConnection() {
-    // IOIN register'indan version oku - TMC2209 = 0x21
-    uint32_t ioin = _driver->IOIN();
+    uint32_t ioin = 0;
+    if (!_read(REG_IOIN, ioin)) {
+        Serial.printf("TMC2209[%s]: IOIN okunamadi\n", _name);
+        return false;
+    }
     uint8_t version = (ioin >> 24) & 0xFF;
-
     Serial.printf("TMC2209[%s]: IOIN=0x%08X, version=0x%02X\n", _name, ioin, version);
-
     if (version == 0x21) {
-        Serial.printf("TMC2209[%s]: Surucu dogrulandi (TMC2209)\n", _name);
+        Serial.printf("TMC2209[%s]: Dogrulandi (TMC2209)\n", _name);
         return true;
     }
-
-    Serial.printf("TMC2209[%s]: HATA - Beklenmeyen version=0x%02X (beklenen 0x21)\n", _name, version);
-    if (version == 0x00) {
-        Serial.printf("TMC2209[%s]: IPUCU - UART hattinda 1K direnç var mi? TX-RX arasi 1K ohm gerekli.\n", _name);
-    }
+    Serial.printf("TMC2209[%s]: Beklenmeyen version=0x%02X\n", _name, version);
     return false;
 }
 
+// ─── YAPILANDIRMA ────────────────────────────────────────────────
 bool TMC2209Driver::configure() {
-    // Her register yazimi arasinda gecikme ekle (TMC2209 UART zamanlama gereksinimleri)
-    const uint8_t REG_DELAY_MS = 10;
+    // GCONF: pdn_disable=1 (bit6), mstep_reg_select=1 (bit7), StealthChop, I_scale_analog=0
+    _write(REG_GCONF, 0x000000C0);
+    delay(10);
 
-    // 1. Oncelikle GCONF register'ini oku, sonra degistir
-    //    (read-modify-write - mevcut bitleri korumak icin)
-    _driver->pdn_disable(true);         // PDN_UART pinini UART icin kullan
-    delay(REG_DELAY_MS);
-    _driver->I_scale_analog(false);     // Dahili VREF kullan (VREF pini degil)
-    delay(REG_DELAY_MS);
-    _driver->mstep_reg_select(true);    // Mikro adim UART ile ayarlanacak (MS1/MS2 degil)
-    delay(REG_DELAY_MS);
+    // IHOLD_IRUN: akım ayarı
+    int irun = (int)(TMC_RMS_CURRENT / 1000.0f * 32.0f * 1.41421f * TMC_RSENSE / 0.325f) - 1;
+    if (irun > 31) irun = 31;
+    if (irun < 0)  irun = 0;
+    uint32_t ihold_irun = ((uint32_t)TMC_IHOLDDELAY << 16) |
+                          ((uint32_t)irun            <<  8) |
+                           (uint32_t)TMC_IHOLD;
+    _write(REG_IHOLD_IRUN, ihold_irun);
+    delay(10);
 
-    // GCONF dogrulamasi - kritik register
-    bool gconf_ok = _driver->pdn_disable() && _driver->mstep_reg_select();
-    if (!gconf_ok) {
-        Serial.printf("TMC2209[%s]: GCONF yazimi basarisiz, tekrar deneniyor...\n", _name);
-        delay(50);
-        // Tum GCONF'u tek seferde yaz
-        // pdn_disable=1(bit6), mstep_reg_select=1(bit7), en_spreadcycle=0(bit2), i_scale_analog=0(bit0)
-        _driver->GCONF(0xC0); // bit6 + bit7
-        delay(REG_DELAY_MS);
-
-        gconf_ok = _driver->pdn_disable() && _driver->mstep_reg_select();
-        if (!gconf_ok) {
-            Serial.printf("TMC2209[%s]: KRITIK - GCONF hala yazilamiyor! UART baglantisini kontrol edin.\n", _name);
-            Serial.printf("TMC2209[%s]:   - TX ve RX arasi 1K ohm direnç var mi?\n", _name);
-            Serial.printf("TMC2209[%s]:   - TMC2209 besleme gerilimi (VCC_IO) 3.3V mi?\n", _name);
-            Serial.printf("TMC2209[%s]:   - Pin atamalari dogru mu? (TX=%d, RX=%d)\n", _name,
-                          TMC_PAN_TX_PIN, TMC_PAN_RX_PIN);
-        }
+    // CHOPCONF: toff=3, hstrt=4, hend=1, tbl=2, intpol=1, mres
+    uint8_t mres;
+    switch (TMC_MICROSTEPS) {
+        case 256: mres = 0; break; case 128: mres = 1; break;
+        case  64: mres = 2; break; case  32: mres = 3; break;
+        case  16: mres = 4; break; case   8: mres = 5; break;
+        case   4: mres = 6; break; case   2: mres = 7; break;
+        default:  mres = 3; break;
     }
+    uint32_t chopconf = 0x10000000              // intpol=1
+                      | ((uint32_t)mres << 24)  // MRES
+                      | (2UL << 16)             // tbl=2
+                      | (1UL <<  7)             // hend=1
+                      | (4UL <<  4)             // hstrt=4
+                      | 3UL;                    // toff=3
+    _write(REG_CHOPCONF, chopconf);
+    delay(10);
 
-    // 2. Akim ayari
-    _driver->rms_current(TMC_RMS_CURRENT);
-    delay(REG_DELAY_MS);
-    _driver->ihold(TMC_IHOLD);          // Bekleme akimi (0-31)
-    delay(REG_DELAY_MS);
-    _driver->iholddelay(TMC_IHOLDDELAY);
-    delay(REG_DELAY_MS);
+    // StealthChop eşiği (0 = her zaman StealthChop)
+    _write(REG_TPWMTHRS, TMC_TPWMTHRS);
+    delay(5);
 
-    // 3. CHOPCONF ayarlari - once toff ayarla (driver'i etkinlestirir)
-    _driver->toff(3);                   // Chopper kapali suresi (0=driver kapali!)
-    delay(REG_DELAY_MS);
-    _driver->hstrt(4);                  // Hysteresis baslangici
-    delay(REG_DELAY_MS);
-    _driver->hend(1);                   // Hysteresis sonu
-    delay(REG_DELAY_MS);
-    _driver->tbl(2);                    // Blanking time
-    delay(REG_DELAY_MS);
+    // StallGuard / CoolStep devre dışı
+    _write(REG_SGTHRS,    0);
+    delay(5);
+    _write(REG_TCOOLTHRS, 0);
+    delay(5);
 
-    // 4. Mikro adim (CHOPCONF'a yazar, toff korunmali)
-    _driver->microsteps(TMC_MICROSTEPS);
-    delay(REG_DELAY_MS);
-
-    // CHOPCONF dogrulamasi
-    uint8_t toff_read = _driver->toff();
-    if (toff_read == 0) {
-        Serial.printf("TMC2209[%s]: UYARI - CHOPCONF.toff=0, driver KAPALI! Tekrar deneniyor...\n", _name);
-        delay(50);
-        _driver->toff(3);
-        delay(REG_DELAY_MS);
-        _driver->hstrt(4);
-        delay(REG_DELAY_MS);
-        _driver->hend(1);
-        delay(REG_DELAY_MS);
-        _driver->tbl(2);
-        delay(REG_DELAY_MS);
-        _driver->microsteps(TMC_MICROSTEPS);
-        delay(REG_DELAY_MS);
-    }
-
-    // 5. StealthChop yapilandirmasi
-    _driver->en_spreadCycle(false);     // StealthChop etkin
-    delay(REG_DELAY_MS);
-    _driver->TPWMTHRS(TMC_TPWMTHRS);   // Gecis esigi
-    delay(REG_DELAY_MS);
-
-    // 6. StallGuard / CoolStep devre disi
-    _driver->SGTHRS(0);
-    delay(REG_DELAY_MS);
-    _driver->TCOOLTHRS(0);
-    delay(REG_DELAY_MS);
-
-    // 7. Hata bitlerini temizle
-    _driver->GSTAT(0x07);
-    delay(REG_DELAY_MS);
+    // Hata bitlerini temizle
+    _write(REG_GSTAT, 0x07);
+    delay(5);
 
     return true;
 }
 
+// ─── DOĞRULAMA ───────────────────────────────────────────────────
 bool TMC2209Driver::verifyConfiguration() {
-    bool allOk = true;
-    delay(20); // Dogrulama oncesi bekle
+    delay(20);
+    uint32_t gconf = 0, chopconf = 0, drv = 0;
+    bool gconf_ok    = _read(REG_GCONF,      gconf);
+    bool chop_ok     = _read(REG_CHOPCONF,   chopconf);
+    bool drv_ok      = _read(REG_DRV_STATUS, drv);
 
-    // Raw register degerlerini oku
-    uint32_t gconf_raw = _driver->GCONF();
-    delay(5);
-    uint32_t chopconf_raw = _driver->CHOPCONF();
-    delay(5);
-    uint32_t drv_status_raw = _driver->DRV_STATUS();
-    delay(5);
+    Serial.printf("TMC2209[%s]: GCONF=0x%08X, CHOPCONF=0x%08X, DRV_STATUS=0x%08X\n",
+                  _name, gconf, chopconf, drv);
 
-    Serial.printf("TMC2209[%s]: Raw GCONF=0x%08X, CHOPCONF=0x%08X, DRV_STATUS=0x%08X\n",
-                  _name, gconf_raw, chopconf_raw, drv_status_raw);
-
-    // Tum registerlar 0 ise UART iletisimi calismiyor
-    if (gconf_raw == 0 && chopconf_raw == 0 && drv_status_raw == 0) {
-        Serial.printf("TMC2209[%s]: KRITIK - Tum registerlar 0! UART iletisimi calismiyor!\n", _name);
-        Serial.printf("TMC2209[%s]: Kontrol listesi:\n", _name);
-        Serial.printf("  1. TX ve RX arasi 1K ohm direnç bagli mi?\n");
-        Serial.printf("  2. TMC2209 VCC_IO = 3.3V mi?\n");
-        Serial.printf("  3. TMC2209 VM (motor gerilimi) bagli mi?\n");
-        Serial.printf("  4. ESP32 TX -> TMC2209 PDN_UART pinine mi gidiyor?\n");
-        Serial.printf("  5. ENABLE pini LOW mu? (Pin %d)\n", MOTOR_ENABLE_PIN);
+    if (!gconf_ok && !chop_ok && !drv_ok) {
+        Serial.printf("TMC2209[%s]: KRITIK - Tum registerlar okunamadi!\n", _name);
         return false;
     }
 
-    // pdn_disable dogrulama
-    if (!_driver->pdn_disable()) {
-        Serial.printf("TMC2209[%s]: UYARI - pdn_disable=0 (olmali=1)\n", _name);
-        allOk = false;
-    } else {
-        Serial.printf("TMC2209[%s]: pdn_disable=1 OK\n", _name);
-    }
+    // pdn_disable kontrolü
+    if (!(gconf & (1 << 6)))
+        Serial.printf("TMC2209[%s]: UYARI - pdn_disable=0\n", _name);
 
-    // mstep_reg_select dogrulama
-    if (!_driver->mstep_reg_select()) {
-        Serial.printf("TMC2209[%s]: UYARI - mstep_reg_select=0 (olmali=1)\n", _name);
-        allOk = false;
-    } else {
-        Serial.printf("TMC2209[%s]: mstep_reg_select=1 OK\n", _name);
-    }
+    // toff kontrolü
+    if ((chopconf & 0x0F) == 0)
+        Serial.printf("TMC2209[%s]: UYARI - toff=0, surucu KAPALI!\n", _name);
 
-    // Mikro adim dogrulama
-    uint16_t readMicrosteps = _driver->microsteps();
-    if (readMicrosteps != TMC_MICROSTEPS) {
-        Serial.printf("TMC2209[%s]: UYARI - Mikro adim: beklenen=%d, okunan=%d\n",
-                      _name, TMC_MICROSTEPS, readMicrosteps);
-        allOk = false;
-    } else {
-        Serial.printf("TMC2209[%s]: Mikro adim: %d OK\n", _name, readMicrosteps);
-    }
+    // StealthChop kontrolü
+    if (gconf & (1 << 2))
+        Serial.printf("TMC2209[%s]: UYARI - SpreadCycle aktif (StealthChop degil)\n", _name);
 
-    // CHOPCONF.toff dogrulama (0 = driver kapali)
-    uint8_t toff_val = _driver->toff();
-    if (toff_val == 0) {
-        Serial.printf("TMC2209[%s]: UYARI - toff=0, motor surucusu KAPALI!\n", _name);
-        allOk = false;
-    } else {
-        Serial.printf("TMC2209[%s]: toff=%d OK\n", _name, toff_val);
-    }
+    uint8_t irun_read = (chopconf >> 8) & 0x1F;
+    Serial.printf("TMC2209[%s]: MRES=%d, toff=%d\n",
+                  _name, (chopconf >> 24) & 0x0F, chopconf & 0x0F);
 
-    // StealthChop dogrulama
-    if (_driver->en_spreadCycle()) {
-        Serial.printf("TMC2209[%s]: UYARI - StealthChop etkin degil\n", _name);
-        allOk = false;
-    } else {
-        Serial.printf("TMC2209[%s]: StealthChop etkin OK\n", _name);
-    }
-
-    // Akim dogrulama
-    Serial.printf("TMC2209[%s]: IRUN=%d, IHOLD=%d, IHOLDDELAY=%d\n",
-                  _name, _driver->irun(), _driver->ihold(), _driver->iholddelay());
-
-    if (allOk) {
-        Serial.printf("TMC2209[%s]: Tum dogrulamalar basarili!\n", _name);
-    } else {
-        Serial.printf("TMC2209[%s]: Bazi dogrulamalar basarisiz - yukaridaki uyarilara bakin\n", _name);
-    }
-
-    return allOk;
+    return true;
 }
 
+// ─── DURUM YAZDIR ────────────────────────────────────────────────
 void TMC2209Driver::printStatus() {
-    if (_driver == nullptr) {
-        Serial.printf("TMC2209[%s]: Surucu baslatilmamis\n", _name);
-        return;
-    }
+    uint32_t ioin = 0, gconf = 0, chopconf = 0, drv = 0;
+    _read(REG_IOIN,       ioin);
+    _read(REG_GCONF,      gconf);
+    _read(REG_CHOPCONF,   chopconf);
+    _read(REG_DRV_STATUS, drv);
 
     Serial.printf("\n--- TMC2209[%s] Durum ---\n", _name);
-    Serial.printf("  GCONF: en_spreadCycle=%d, pdn_disable=%d, mstep_reg_select=%d\n",
-                  _driver->en_spreadCycle(), _driver->pdn_disable(), _driver->mstep_reg_select());
-    Serial.printf("  IRUN=%d, IHOLD=%d, IHOLDDELAY=%d\n",
-                  _driver->irun(), _driver->ihold(), _driver->iholddelay());
-    Serial.printf("  Mikro adim: %d\n", _driver->microsteps());
-    Serial.printf("  CHOPCONF: toff=%d, hstrt=%d, hend=%d, tbl=%d\n",
-                  _driver->toff(), _driver->hstrt(), _driver->hend(), _driver->tbl());
-    Serial.printf("  TPWMTHRS: %u\n", _driver->TPWMTHRS());
-
-    uint32_t drvStatus = _driver->DRV_STATUS();
-    Serial.printf("  DRV_STATUS: 0x%08X\n", drvStatus);
-    Serial.printf("    otpw=%d, ot=%d, s2ga=%d, s2gb=%d, ola=%d, olb=%d, stst=%d\n",
-                  (drvStatus >> 0) & 1, (drvStatus >> 1) & 1,
-                  (drvStatus >> 2) & 1, (drvStatus >> 3) & 1,
-                  (drvStatus >> 4) & 1, (drvStatus >> 5) & 1,
-                  (drvStatus >> 31) & 1);
+    Serial.printf("  VERSION:   0x%02X %s\n", (ioin >> 24) & 0xFF,
+                  ((ioin >> 24) & 0xFF) == 0x21 ? "[OK]" : "[!!]");
+    Serial.printf("  GCONF:     0x%08X\n", gconf);
+    Serial.printf("  CHOPCONF:  0x%08X (MRES=%d, toff=%d)\n",
+                  chopconf, (chopconf >> 24) & 0x0F, chopconf & 0x0F);
+    Serial.printf("  DRV_STATUS:0x%08X\n", drv);
+    Serial.printf("    otpw=%d ot=%d s2ga=%d s2gb=%d ola=%d olb=%d stst=%d\n",
+                  (drv>>0)&1, (drv>>1)&1, (drv>>2)&1, (drv>>3)&1,
+                  (drv>>4)&1, (drv>>5)&1, (drv>>31)&1);
     Serial.printf("--- TMC2209[%s] Bitti ---\n\n", _name);
 }
 
+// ─── AŞIRI ISI ───────────────────────────────────────────────────
 bool TMC2209Driver::isOverTemperature() {
-    if (_driver == nullptr) return false;
-    uint32_t drvStatus = _driver->DRV_STATUS();
-    return (drvStatus & 0x03) != 0; // bit0=otpw, bit1=ot
+    uint32_t drv = 0;
+    _read(REG_DRV_STATUS, drv);
+    return (drv & 0x03) != 0;
 }
 
+// ─── AÇIK YÜKÜ ───────────────────────────────────────────────────
 bool TMC2209Driver::isOpenLoad() {
-    if (_driver == nullptr) return false;
-    uint32_t drvStatus = _driver->DRV_STATUS();
-    return (drvStatus & 0x30) != 0; // bit4=ola, bit5=olb
-}
-
-bool TMC2209Driver::uartLoopbackTest(HardwareSerial &serial, uint8_t rxPin, uint8_t txPin, const char* name) {
-    Serial.printf("\n=== UART LOOPBACK TESTI [%s] ===\n", name);
-    Serial.printf("TX=%d, RX=%d, Baud=%d\n", txPin, rxPin, TMC_UART_BAUD);
-    Serial.printf("DIKKAT: TMC2209'u sokun ve TX pinini RX pinine dogrudan baglayin!\n");
-    Serial.printf("(GPIO %d ile GPIO %d arasina kisa kablo)\n\n", txPin, rxPin);
-
-    serial.begin(TMC_UART_BAUD, SERIAL_8N1, rxPin, txPin);
-    delay(50);
-
-    // RX buffer'ini temizle
-    while (serial.available()) serial.read();
-
-    // Test verileri gonder
-    const uint8_t testData[] = {0x05, 0x00, 0x06, 0xA1, 0x55};
-    const int testLen = sizeof(testData);
-    int successCount = 0;
-
-    for (int round = 0; round < 3; round++) {
-        // Gonder
-        for (int i = 0; i < testLen; i++) {
-            serial.write(testData[i]);
-        }
-        serial.flush(); // Gonderme tamamlanana kadar bekle
-        delay(10);
-
-        // Oku
-        uint8_t received[16] = {0};
-        int rxCount = 0;
-        unsigned long start = millis();
-        while (rxCount < testLen && (millis() - start) < 100) {
-            if (serial.available()) {
-                received[rxCount++] = serial.read();
-            }
-        }
-
-        // Karsilastir
-        bool match = (rxCount == testLen);
-        if (match) {
-            for (int i = 0; i < testLen; i++) {
-                if (received[i] != testData[i]) {
-                    match = false;
-                    break;
-                }
-            }
-        }
-
-        Serial.printf("  Deneme %d: Gonderilen=%d bayt, Alinan=%d bayt -> %s\n",
-                      round + 1, testLen, rxCount, match ? "BASARILI" : "BASARISIZ");
-
-        if (!match && rxCount > 0) {
-            Serial.printf("    Gonderilen: ");
-            for (int i = 0; i < testLen; i++) Serial.printf("0x%02X ", testData[i]);
-            Serial.printf("\n    Alinan:     ");
-            for (int i = 0; i < rxCount; i++) Serial.printf("0x%02X ", received[i]);
-            Serial.printf("\n");
-        } else if (rxCount == 0) {
-            Serial.printf("    Hic veri alinamadi! Pin atamasi yanlis olabilir.\n");
-        }
-
-        if (match) successCount++;
-
-        // Buffer temizle
-        while (serial.available()) serial.read();
-        delay(20);
-    }
-
-    serial.end();
-
-    Serial.printf("\nSONUC: %d/3 basarili\n", successCount);
-    if (successCount == 3) {
-        Serial.printf("  -> ESP32 UART bu pinlerde CALISIYOR. Sorun TMC2209 baglantisinda.\n");
-    } else if (successCount == 0) {
-        Serial.printf("  -> ESP32 UART bu pinlerde CALISMIYOR!\n");
-        Serial.printf("  -> Pin atamasini kontrol edin veya farkli pinleri deneyin.\n");
-    }
-    Serial.printf("=== LOOPBACK TESTI BITTI ===\n\n");
-
-    return successCount == 3;
+    uint32_t drv = 0;
+    _read(REG_DRV_STATUS, drv);
+    return (drv & 0x30) != 0;
 }

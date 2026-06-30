@@ -8,17 +8,17 @@
 #define PAN_DIR_PIN         2   // Pan motoru yön pini
 #define TILT_STEP_PIN       4   // Tilt motoru step pini
 #define TILT_DIR_PIN        5   // Tilt motoru yön pini
-#define MOTOR_ENABLE_PIN    6   // Ortak enable pini (LOW = etkin)
+#define MOTOR_ENABLE_PIN    48   // Ortak enable pini (LOW = etkin)
 
 // TMC2209 UART Pinleri
-// Breadboard: 17/18 (PAN), 19/20 (TILT)
-// PCB gelince: PAN=47/48, TILT=45/46 olarak güncelle
-#define TMC_PAN_TX_PIN      17
-#define TMC_PAN_RX_PIN      18
-#define TMC_TILT_TX_PIN     19
-#define TMC_TILT_RX_PIN     20
+// 17/18 flash rezerve, 19/20 USB D-/D+ — kullanılamaz
+// Test edildi: GPIO21/38 (PAN), GPIO40/42 (TILT)
+#define TMC_PAN_TX_PIN      40
+#define TMC_PAN_RX_PIN      38
+#define TMC_TILT_TX_PIN     21
+#define TMC_TILT_RX_PIN     47
 #define TMC_UART_BAUD       115200
-#define TMC_DRIVER_ADDRESS  0x01    // MS1=3V3, MS2=GND → adres 1 (düzeltildi, eskisi 0x00)
+#define TMC_DRIVER_ADDRESS  0x01    // MS1=3V3, MS2=GND → adres 1
 
 // TMC2209 Sürücü Parametreleri
 #define TMC_RSENSE          0.22f   // PCB R5=0.22Ω (düzeltildi, eskisi 0.11f)
@@ -29,7 +29,7 @@
 #define TMC_IHOLDDELAY      6       // Hareket -> bekleme geçiş gecikmesi (0-15)
 
 // Lazer Kontrolü
-#define LASER_PIN           7
+#define LASER_PIN           41
 
 // Donanımsal I2C Veri Yolları (IMU'lar için - zaman-kritik)
 #define I2C0_SDA            8   // Gövde IMU - SDA pini
@@ -44,7 +44,7 @@
 #define SOFT_I2C_TILT_SCL   15  // Tilt Encoder - SCL pini
 
 // Buzzer Yapılandırması
-#define BUZZER_PIN      39     // Buzzer kontrol pini
+#define BUZZER_PIN      16     // Buzzer kontrol pini
 #define BUZZER_PWM_CH   0      // PWM kanalı (0-15 arası)
 #define BUZZER_FREQ     2000   // Varsayılan frekans (Hz)
 

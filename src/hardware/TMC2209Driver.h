@@ -2,7 +2,6 @@
 #define TMC2209_DRIVER_H
 
 #include <Arduino.h>
-#include <TMCStepper.h>
 #include "../config/HardwareConfig.h"
 
 class TMC2209Driver {
@@ -25,20 +24,18 @@ public:
     bool isOverTemperature();
     bool isOpenLoad();
 
-    TMC2209Stepper* getDriver() { return _driver; }
-
 private:
-    TMC2209Stepper* _driver;
-    DriverStatus _status;
-    bool _uartOk;
-    const char* _name;
+    HardwareSerial* _serial;
+    DriverStatus     _status;
+    bool             _uartOk;
+    const char*      _name;
+
+    uint8_t  _calcCRC(uint8_t *data, int len);
+    bool     _read(uint8_t reg, uint32_t &value);
+    void     _write(uint8_t reg, uint32_t value);
 
     bool configure();
     bool verifyConfiguration();
-
-public:
-    // UART loopback testi: TX ve RX pinlerini birbirine bagla (TMC2209'u sok)
-    static bool uartLoopbackTest(HardwareSerial &serial, uint8_t rxPin, uint8_t txPin, const char* name);
 };
 
 #endif

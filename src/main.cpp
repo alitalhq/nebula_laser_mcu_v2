@@ -141,31 +141,28 @@ bool initializeHardware() { //donanımları başlatır
 
     Serial.println("Pan Encoder baslatiliyor...");//Encoder
     if (!g_panEncoder.begin(g_softI2C_pan, AS5600_ADDR)) {
-        Serial.println("KRITIK HATA: Pan encoder bulunamadi!");
-        return false;
-    }
-
-    // Mıknatıs durumunu kontrol et - doğru çalışma için önemli
-    EncoderDriver::MagnetStatus panMagnet = g_panEncoder.getMagnetStatus();
-    if (panMagnet == EncoderDriver::MAGNET_GOOD) {
-        Serial.println("Pan Encoder TAMAM (SoftI2C, 0x36, miknatis iyi)");
+        Serial.println("UYARI: Pan encoder bulunamadi - limit detection devre disi");
     } else {
-        Serial.printf("Pan Encoder TAMAM ama miknatis durumu: %d (2=iyi)\n", panMagnet);
+        EncoderDriver::MagnetStatus panMagnet = g_panEncoder.getMagnetStatus();
+        if (panMagnet == EncoderDriver::MAGNET_GOOD) {
+            Serial.println("Pan Encoder TAMAM (SoftI2C, 0x36, miknatis iyi)");
+        } else {
+            Serial.printf("Pan Encoder TAMAM ama miknatis durumu: %d (2=iyi)\n", panMagnet);
+        }
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
     Serial.println("Tilt Encoder baslatiliyor...");//Encoder
     if (!g_tiltEncoder.begin(g_softI2C_tilt, AS5600_ADDR, true)) {
-        Serial.println("KRITIK HATA: Tilt encoder bulunamadi!");
-        return false;
-    }
-
-    EncoderDriver::MagnetStatus tiltMagnet = g_tiltEncoder.getMagnetStatus();
-    if (tiltMagnet == EncoderDriver::MAGNET_GOOD) {
-        Serial.println("Tilt Encoder TAMAM (SoftI2C, 0x36, miknatis iyi)");
+        Serial.println("UYARI: Tilt encoder bulunamadi - limit detection devre disi");
     } else {
-        Serial.printf("Tilt Encoder TAMAM ama miknatis durumu: %d (2=iyi)\n", tiltMagnet);
+        EncoderDriver::MagnetStatus tiltMagnet = g_tiltEncoder.getMagnetStatus();
+        if (tiltMagnet == EncoderDriver::MAGNET_GOOD) {
+            Serial.println("Tilt Encoder TAMAM (SoftI2C, 0x36, miknatis iyi)");
+        } else {
+            Serial.printf("Tilt Encoder TAMAM ama miknatis durumu: %d (2=iyi)\n", tiltMagnet);
+        }
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////

@@ -279,14 +279,19 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
         float rawPan = g_panEncoder.readAngleDegrees();//encoder okunur
         float rawTilt = g_tiltEncoder.readAngleDegrees();
 
-        if (rawPan < 0 || rawTilt < 0) {
+        if (rawPan < 0) {
             g_sensorHealth.recordFailure(SensorHealth::PAN_ENCODER);
-            g_sensorHealth.recordFailure(SensorHealth::TILT_ENCODER);
-            continue;
+            rawPan = 0.0f;
+        } else {
+            g_sensorHealth.recordSuccess(SensorHealth::PAN_ENCODER);
         }
 
-        g_sensorHealth.recordSuccess(SensorHealth::PAN_ENCODER);
-        g_sensorHealth.recordSuccess(SensorHealth::TILT_ENCODER);
+        if (rawTilt < 0) {
+            g_sensorHealth.recordFailure(SensorHealth::TILT_ENCODER);
+            rawTilt = 0.0f;
+        } else {
+            g_sensorHealth.recordSuccess(SensorHealth::TILT_ENCODER);
+        }
 
         uint32_t timestamp = micros();//encoder filtrelenir
         panFilter.addSample(rawPan, timestamp);
@@ -452,7 +457,7 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
         float stepRatePan = finalVelPan * STEPS_PER_DEGREE;//step hızına çevir ve motor sür
         float stepRateTilt = finalVelTilt * STEPS_PER_DEGREE;
 
-        // Yon ayarla
+        // Yon ayarla (kablo swap'i sonrasi dogru yon: >= 0)
         g_panMotor.setDirection(stepRatePan >= 0);
         g_tiltMotor.setDirection(stepRateTilt >= 0);
 

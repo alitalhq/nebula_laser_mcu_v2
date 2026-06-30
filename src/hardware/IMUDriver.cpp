@@ -22,6 +22,8 @@ bool IMUDriver::begin(TwoWire &wire, uint8_t sda, uint8_t scl, uint8_t address) 
     _scl = scl;
     _consecutiveFailures = 0;
 
+    wire.setTimeOut(20);  // I2C işlemi 20ms'den uzun süremez — sonsuz bloke önlenir
+
     // Chip ID'yi birkaç denemede oku — reset sonrası chip oturması için
     uint8_t chipID = 0;
     for (int attempt = 0; attempt < 3; attempt++) {
@@ -67,6 +69,7 @@ bool IMUDriver::recover() {
     digitalWrite(_sda, HIGH); delayMicroseconds(5);
 
     _wire->begin(_sda, _scl, 400000);
+    _wire->setTimeOut(20);
     delay(50);
 
     // IMU'yu yeniden başlat

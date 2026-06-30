@@ -8,8 +8,8 @@ struct StabilizationConfig {
     // İleri besleme kazançları
     // Gövde açısal hızının ne kadarının doğrudan telafi edileceğini belirler
     // 1.0 = tam telafi, 0.0 = telafi yok
-    float k_feedforward_pan  = 0.9f;    // [TUNING adim 4] baslangic: 0
-    float k_feedforward_tilt = 0.9f;    // [TUNING adim 4] baslangic: 0
+    float k_feedforward_pan  = 0.6f;    // [TUNING adim 4] baslangic: 0
+    float k_feedforward_tilt = 0.6f;    // [TUNING adim 4] baslangic: 0
 
     float k_damping_pan      = 0.0f;    // [TUNING adim 3] baslangic: 0
     float k_damping_tilt     = 0.0f;    // [TUNING adim 3] baslangic: 0
@@ -25,17 +25,17 @@ struct PositionConfig {
     // Oransal kazançlar (Kp)
     // Hata ne kadar büyükse, düzeltme o kadar güçlü
     float kp_pan    = 20.0f;     // [TUNING adim 1]
-    float ki_pan    = 0.0f;     // [TUNING adim 5] simdilik sifir
-    float kd_pan    = 5.5f;     // [TUNING adim 2] simdilik sifir
+    float ki_pan    = 0.0f;      // [TUNING adim 5] simdilik sifir
+    float kd_pan    = 8.0f;      // [TUNING adim 2]
     float i_max_pan = 10.0f;
 
-    float kp_tilt    = 13.0f;    //13 [TUNING adim 1]
-    float ki_tilt    = 0.0f;    // [TUNING adim 5] simdilik sifir
-    float kd_tilt    = 4.5f;    //4.5 [TUNING adim 2] simdilik sifir
+    float kp_tilt    = 13.0f;    // [TUNING adim 1]
+    float ki_tilt    = 0.0f;     // [TUNING adim 5] simdilik sifir
+    float kd_tilt    = 7.0f;     // [TUNING adim 2]
     float i_max_tilt = 10.0f;
 
-    float deadzone_pan  = 2.0f;  // GROUND_LOCK — titreşimi bastırır
-    float deadzone_tilt = 2.0f;
+    float deadzone_pan  = 3.5f;  // GROUND_LOCK — titreşimi bastırır
+    float deadzone_tilt = 3.5f;
 
     float deadzone_pan_tracking  = 0.3f;  // TRACKING — hassas kilitleme
     float deadzone_tilt_tracking = 0.3f;
@@ -47,7 +47,7 @@ struct CombinerConfig {
     // Motor ve mekanik sistemin güvenli çalışma sınırları
     float max_velocity_pan  = 200.0f;   // Pan maksimum hız
 
-    float max_velocity_tilt = 200.0f;    // Tilt maksimum hız
+    float max_velocity_tilt = 200.0f;   // Tilt maksimum hız
 
     // İvme limitleri (derece/saniye²) - step kaybını önler
     // Çok hızlı ivme değişimleri motorun adım kaçırmasına neden olabilir

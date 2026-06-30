@@ -1,4 +1,5 @@
 #include "SoftI2C.h"
+#include "driver/gpio.h"
 
 SoftI2C::SoftI2C(uint8_t sda, uint8_t scl)
     : _sda(sda), _scl(scl), _frequency(100000), _rxIndex(0), _rxLength(0)
@@ -13,6 +14,10 @@ bool SoftI2C::begin(uint32_t frequency) {
 
     pinMode(_sda, OUTPUT_OPEN_DRAIN);
     pinMode(_scl, OUTPUT_OPEN_DRAIN);
+
+    // Dahili pull-up — harici pull-up direnci olmayan encoder modülleri için
+    gpio_pullup_en((gpio_num_t)_sda);
+    gpio_pullup_en((gpio_num_t)_scl);
 
     sdaHigh();
     sclHigh();

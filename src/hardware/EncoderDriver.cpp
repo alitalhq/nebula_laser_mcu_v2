@@ -6,6 +6,7 @@ EncoderDriver::EncoderDriver()
     , _readFailures(0)
     , _consecutiveFailures(0)
     , _invertDirection(false)
+    , _initialized(false)
 {
 }
 
@@ -13,6 +14,7 @@ bool EncoderDriver::begin(SoftI2C &wire, uint8_t address, bool invertDirection) 
     _invertDirection = invertDirection;//başlangıçta i2c bağlantısı ve mıknatıs durumu kontrol edilir
     _wire = &wire;
     _address = address;
+    _initialized = false;
 
     uint8_t status;
     if (!readRegister(REG_STATUS, status)) {
@@ -33,15 +35,17 @@ bool EncoderDriver::begin(SoftI2C &wire, uint8_t address, bool invertDirection) 
         );
     }
 
+    _initialized = true;
     return true;
 }
 
 bool EncoderDriver::readRawAngle(uint16_t &raw) {
+    if (!_initialized) return false;
+
     if (!readRegister16(REG_RAW_ANGLE_H, raw)) {
         _readFailures++;
         _consecutiveFailures++;
         if (_consecutiveFailures >= 5) {
-            Serial.println("Encoder: I2C kurtarma yapiliyor...");
             _wire->recover();
             _consecutiveFailures = 0;
         }
