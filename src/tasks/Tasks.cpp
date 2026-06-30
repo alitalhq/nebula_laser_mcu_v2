@@ -589,8 +589,18 @@ void serialTask(void *params) {//serial iletişim görevi
 void diagnosticsTask(void *params) {//çıktıları okuyup sensor sağlığıını kontrol eder
     Serial.println("TeshisGorevi: Basladi");
 
+    static uint32_t lastCurrentDiag = 0;
+
     while (true) {
         vTaskDelay(pdMS_TO_TICKS(100));  // 10 Hz
+
+        // TMC akim/sicaklik tani — 2 saniyede bir (IRUN/IHOLD ayari icin)
+        // DURUYOR satiri IHOLD'u, HAREKET satiri IRUN'u gosterir
+        if (millis() - lastCurrentDiag > 2000) {
+            lastCurrentDiag = millis();
+            g_panTMC.printCurrentDiag();
+            g_tiltTMC.printCurrentDiag();
+        }
 
         if (g_sensorHealth.shouldEnterSafeMode()) {
             Serial.print("\n!!!!! KRITIK: GUVENLI MODA GECILIYOR — Sagliksiz: ");

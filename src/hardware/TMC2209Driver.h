@@ -21,6 +21,7 @@ public:
     DriverStatus getStatus() const { return _status; }
     bool isUartOk() const { return _uartOk; }
     void printStatus();
+    void printCurrentDiag();   // CS_ACTUAL (gercek akim) + sicaklik bandi + otpw/ot
     bool isOverTemperature();
     bool isOpenLoad();
 

@@ -240,6 +240,37 @@ void TMC2209Driver::printStatus() {
     Serial.printf("--- TMC2209[%s] Bitti ---\n\n", _name);
 }
 
+// ─── AKIM / SICAKLIK TANI ────────────────────────────────────────
+// CS_ACTUAL: surucunun o an uyguladigi gercek akim skalasi (0-31)
+// Durunca IHOLD'u, hareket edince IRUN'u yansitir.
+// Sicaklik bantlari (t120/t143/t150/t157) sensorsuz kaba sicaklik verir.
+void TMC2209Driver::printCurrentDiag() {
+    uint32_t drv = 0;
+    if (!_read(REG_DRV_STATUS, drv)) {
+        Serial.printf("  TMC[%s]: DRV_STATUS okunamadi\n", _name);
+        return;
+    }
+
+    uint8_t cs_actual = (drv >> 16) & 0x1F;
+    // I_RMS = (CS+1)/32 * Vfs / (Rsense * sqrt2),  Vfs=0.325 (vsense=0)
+    float i_rms = (cs_actual + 1) / 32.0f * 0.325f / (TMC_RSENSE * 1.41421f);
+
+    bool otpw = (drv >> 0) & 1;   // >120C on-uyari
+    bool ot   = (drv >> 1) & 1;   // >143C kapanma
+    bool stst = (drv >> 31) & 1;  // standstill
+
+    const char* temp;
+    if      ((drv >> 11) & 1) temp = ">157C";
+    else if ((drv >> 10) & 1) temp = ">150C";
+    else if ((drv >>  9) & 1) temp = ">143C";
+    else if ((drv >>  8) & 1) temp = ">120C";
+    else                      temp = "<120C";
+
+    Serial.printf("  TMC[%s] %-7s | CS_ACTUAL=%2d (~%.2fA RMS) | sicaklik=%s | otpw=%d ot=%d\n",
+                  _name, stst ? "DURUYOR" : "HAREKET",
+                  cs_actual, i_rms, temp, otpw, ot);
+}
+
 // ─── AŞIRI ISI ───────────────────────────────────────────────────
 bool TMC2209Driver::isOverTemperature() {
     uint32_t drv = 0;
