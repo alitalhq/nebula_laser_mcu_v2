@@ -52,11 +52,7 @@ bool StepperTimer::begin(Axis axis, uint8_t stepPin, uint8_t dirPin) {
 }
 
 void StepperTimer::setFrequency(float stepsPerSecond) {
-    // Mikro-titreme esigi: gurultu seviyesindeki cok dusuk hizlarda adim URETME.
-    // Boylece motor gercekten durur, TMC standstill'i algilar ve IHOLD'a
-    // (dusuk durma akimi) iner -> durmada ciddi isi dususu.
-    // 5 step/s ≈ 0.28 derece/s — gercek hareketi etkilemez, sadece titremeyi keser.
-    if (stepsPerSecond < 5.0f) {
+    if (stepsPerSecond <= 0.0f) {//0dan küçükse motoru durdur
         disable();
         return;
     }

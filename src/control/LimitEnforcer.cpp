@@ -39,11 +39,9 @@ void LimitEnforcer::enforce(
     _panAtMax = (devPan >=  _cfg.pan_range);
 
     if (_panAtMin) {
-        velocityPan    = MathUtils::clamp(velocityPan, 0.0f, 1000.0f);
-        worldTargetPan = MathUtils::wrapAngle360(_cfg.pan_offset - _cfg.pan_range) + deltaIMUPan;
+        velocityPan = MathUtils::clamp(velocityPan, 0.0f, 1000.0f);   // sadece uzaklasmaya izin
     } else if (_panAtMax) {
-        velocityPan    = MathUtils::clamp(velocityPan, -1000.0f, 0.0f);
-        worldTargetPan = MathUtils::wrapAngle360(_cfg.pan_offset + _cfg.pan_range) + deltaIMUPan;
+        velocityPan = MathUtils::clamp(velocityPan, -1000.0f, 0.0f);  // sadece uzaklasmaya izin
     } else {
         float distToMin = devPan + _cfg.pan_range;   // 0 = min limitte, artar uzaklaştıkça
         float distToMax = _cfg.pan_range - devPan;   // 0 = max limitte, artar uzaklaştıkça
@@ -66,11 +64,9 @@ void LimitEnforcer::enforce(
     _tiltAtMax = (devTilt >=  _cfg.tilt_range);
 
     if (_tiltAtMin) {
-        velocityTilt    = MathUtils::clamp(velocityTilt, 0.0f, 1000.0f);
-        worldTargetTilt = MathUtils::wrapAngle360(_cfg.tilt_offset - _cfg.tilt_range) + deltaIMUTilt;
+        velocityTilt = MathUtils::clamp(velocityTilt, 0.0f, 1000.0f);   // sadece uzaklasmaya izin
     } else if (_tiltAtMax) {
-        velocityTilt    = MathUtils::clamp(velocityTilt, -1000.0f, 0.0f);
-        worldTargetTilt = MathUtils::wrapAngle360(_cfg.tilt_offset + _cfg.tilt_range) + deltaIMUTilt;
+        velocityTilt = MathUtils::clamp(velocityTilt, -1000.0f, 0.0f);  // sadece uzaklasmaya izin
     } else {
         float distToMin = devTilt + _cfg.tilt_range;
         float distToMax = _cfg.tilt_range - devTilt;

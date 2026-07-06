@@ -8,8 +8,8 @@ struct StabilizationConfig {
     // İleri besleme kazançları
     // Gövde açısal hızının ne kadarının doğrudan telafi edileceğini belirler
     // 1.0 = tam telafi, 0.0 = telafi yok
-    float k_feedforward_pan  = 0.6f;    // [TUNING adim 4] baslangic: 0
-    float k_feedforward_tilt = 0.6f;    // [TUNING adim 4] baslangic: 0
+    float k_feedforward_pan  = 0.6f;    // eski calisan deger (IMU duzelince geri yuklendi)
+    float k_feedforward_tilt = 0.6f;    // eski calisan deger
 
     float k_damping_pan      = 0.0f;    // [TUNING adim 3] baslangic: 0
     float k_damping_tilt     = 0.0f;    // [TUNING adim 3] baslangic: 0
@@ -24,36 +24,41 @@ struct StabilizationConfig {
 struct PositionConfig {
     // Oransal kazançlar (Kp)
     // Hata ne kadar büyükse, düzeltme o kadar güçlü
-    float kp_pan    = 20.0f;     // [TUNING adim 1]
-    float ki_pan    = 0.0f;      // [TUNING adim 5] simdilik sifir
-    float kd_pan    = 8.0f;      // [TUNING adim 2]
+    float kp_pan    = 14.0f;    // eski calisan deger (IMU duzelince geri yuklendi)
+    float ki_pan    = 0.01f;
+    float kd_pan    = 6.5f;     // eski calisan deger
     float i_max_pan = 10.0f;
 
-    float kp_tilt    = 13.0f;    // [TUNING adim 1]
-    float ki_tilt    = 0.0f;     // [TUNING adim 5] simdilik sifir
-    float kd_tilt    = 7.0f;     // [TUNING adim 2]
+    float kp_tilt    = 14.0f;   // eski calisan deger (IMU duzelince geri yuklendi)
+    float ki_tilt    = 0.01f;
+    float kd_tilt    = 6.5f;    // eski calisan deger
     float i_max_tilt = 10.0f;
 
-    float deadzone_pan  = 3.5f;  // GROUND_LOCK — titreşimi bastırır
-    float deadzone_tilt = 3.5f;
+    float deadzone_pan  = 2.0f;  // GROUND_LOCK — titreşimi bastırır
+    float deadzone_tilt = 2.0f;
 
-    float deadzone_pan_tracking  = 0.3f;  // TRACKING — hassas kilitleme
-    float deadzone_tilt_tracking = 0.3f;
+    float deadzone_pan_tracking  = 0.1f;  // TRACKING — hassas kilitleme
+    float deadzone_tilt_tracking = 0.1f;
+
+    // Level trim — kafa IMU "0"i gercek yatay degilse duzeltme ofseti (derece)
+    // Kamera GERCEKTEN yatayken [POS] logundaki world degeri ne ise buraya girilir
+    float level_trim_pan  = 0.0f;   // headRoll = bu deger → gercek yatay
+    float level_trim_tilt = 0.0f;   // headPitch = bu deger → gercek yatay
 };
 
 // CommandCombiner parametreleri
 struct CombinerConfig {
     // Hız limitleri (derece/saniye)
     // Motor ve mekanik sistemin güvenli çalışma sınırları
-    float max_velocity_pan  = 200.0f;   // Pan maksimum hız
+    float max_velocity_pan  = 200.0f;   // eski calisan deger (IMU duzelince geri yuklendi)
 
-    float max_velocity_tilt = 200.0f;   // Tilt maksimum hız
+    float max_velocity_tilt = 200.0f;   // eski calisan deger
 
     // İvme limitleri (derece/saniye²) - step kaybını önler
     // Çok hızlı ivme değişimleri motorun adım kaçırmasına neden olabilir
-    float max_acceleration_pan  = 500.0f;   // Pan maksimum ivme
+    float max_acceleration_pan  = 500.0f;   // eski calisan deger
 
-    float max_acceleration_tilt = 400.0f;   // Tilt maksimum ivme
+    float max_acceleration_tilt = 400.0f;   // eski calisan deger
 
     // ROS2 hız ipuçlarından ileri besleme kazancı
     // Hareket tahmini için kullanılır
@@ -62,16 +67,20 @@ struct CombinerConfig {
 
 // LimitEnforcer parametreleri
 struct LimitConfig {
-    // Encoder home açıları — manuel girilir, motorlar durmadayken ölçülür
-    float pan_offset  = 180.0f;  // pan encoder home açısı  (0-360°)
-    float tilt_offset = 180.0f;  // tilt encoder home açısı (0-360°)
+    // Mekanik limitlerin ORTASI = home (limiter'in gordugu sw/invert-sonrasi koordinat)
+    // Olculen ham AS5600 sayimlarindan hesaplandi (2026-07-05):
+    //   PAN  (invert YOK): min=1170(102.83°) max=571(50.19°) -> offset=76.51 range=26.32
+    //   TILT (invert VAR): ham min=3932 max=658; sw=(4095-ham) -> 14.33°/302.09°
+    //                      wrap-ortalama -> offset=338.21 range=36.12 (toplam ~72° hareket)
+    float pan_offset  = 76.51f;  // pan encoder home açısı  (0-360°)
+    float tilt_offset = 338.21f; // tilt encoder home açısı (0-360°)
 
     // Home'dan her iki yönde izin verilen max sapma
-    float pan_range  = 30.0f;   // derece
-    float tilt_range = 20.0f;   // derece
+    float pan_range  = 26.32f;  // derece
+    float tilt_range = 36.12f;  // derece
 
     float soft_margin = 5.0f;
-    bool enforce_limits = false;  // offset değerleri ölçülüp girilene kadar kapalı
+    bool enforce_limits = false;  // olculen mekanik limitler girildi
 };
 
 // IMUFusion parametreleri

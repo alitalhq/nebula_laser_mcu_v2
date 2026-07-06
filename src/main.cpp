@@ -187,14 +187,11 @@ bool initializeHardware() { //donanımları başlatır
 
 bool calibrateGyros() {//imuları kalibre edip NSVye kaydeder
     Serial.println("\n========== JIROSKOP KALIBRASYONU ==========");
-    Serial.println("Gimbal 10 saniye boyunca HAREKETSIZ kalmalidir");
-    Serial.println("Kalibrasyon sirasinda gimbal'i HAREKET ETTIRMEYIN");
+    Serial.println("Gimbal HAREKETSIZ kalmalidir - ses caldigi surece DOKUNMA");
     Serial.println("");
-    Serial.println("Kalibrasyon 3 saniye icinde basliyor...");
 
-    delay(3000);
-
-    g_buzzer.calibrationWarning();//kalibrasyon boyunca ses çıkarır
+    // Ses yer referansi kalibrasyonundan beri surekli caliyor; burada da acik tut (guvence).
+    g_buzzer.calibrationWarning();
 
 
     Serial.println("\nGovde IMU jiroskopu kalibre ediliyor...");
@@ -482,9 +479,10 @@ bool calibrateGroundReference() {
     Serial.println("");
     Serial.println("Kalibrasyon 3 saniye icinde basliyor...");
 
-    delay(3000);
-
+    // TEK SUREKLI KALIBRASYON SESI: burada baslar, jiroskop kalibrasyonu bitince susar.
+    // Ses caldigi surece DOKUNMA. Arada hic susmaz.
     g_buzzer.calibrationWarning();
+    delay(3000);
 
     if (!g_groundRef.calibrate(g_bodyIMU, 1000)) {
         g_buzzer.noTone();
@@ -493,7 +491,7 @@ bool calibrateGroundReference() {
         return false;
     }
 
-    g_buzzer.noTone();
+    // Ses BILEREK kapatilmiyor - jiroskop kalibrasyonu bitene kadar surekli calsin
     delay(200);
 
     return true;

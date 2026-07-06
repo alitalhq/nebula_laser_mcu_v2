@@ -4,8 +4,8 @@
 #include <Arduino.h>
 
 // Step Motor Pinleri
-#define PAN_STEP_PIN        1   // Pan motoru step pini
-#define PAN_DIR_PIN         2   // Pan motoru yön pini
+#define PAN_STEP_PIN        2   // Pan motoru step pini
+#define PAN_DIR_PIN         1   // Pan motoru yön pini
 #define TILT_STEP_PIN       4   // Tilt motoru step pini
 #define TILT_DIR_PIN        5   // Tilt motoru yön pini
 #define MOTOR_ENABLE_PIN    48   // Ortak enable pini (LOW = etkin)

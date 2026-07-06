@@ -332,20 +332,23 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
         // ── Gimbal mod state machine ──────────────────────────────────
         float targetPan, targetTilt, ffPan, ffTilt;
 
+        const float trimPan  = g_posConfig.level_trim_pan;
+        const float trimTilt = g_posConfig.level_trim_tilt;
+
         if (gimbalMode == MODE_LEVELING) {
-            targetTilt = 0.0f;
-            targetPan  = 0.0f;
+            targetTilt = trimTilt;
+            targetPan  = trimPan;
             ffPan = 0.0f; ffTilt = 0.0f;
 
-            bool pitchOK = fabsf(headPitch) < 1.5f;
-            bool rollOK  = fabsf(headRoll)  < 2.5f;
+            bool pitchOK = fabsf(headPitch - trimTilt) < 1.5f;
+            bool rollOK  = fabsf(headRoll  - trimPan)  < 2.5f;
 
             if (pitchOK && rollOK) {
                 if (levelStableStart == 0) levelStableStart = millis();
                 if (millis() - levelStableStart >= 1000) {
                     limiter.setConfig(g_limitConfig);  // limitler aktif
                     posCtrl.resetIntegral();
-                    g_targetMgr.setGroundLockTarget(0.0f, 0.0f);
+                    g_targetMgr.setGroundLockTarget(trimPan, trimTilt);
                     gimbalMode = MODE_STABILIZE;
                     Serial.printf("[LEVELING] Tamamlandi — Pitch=%.1f Roll=%.1f\n", headPitch, headRoll);
                 }
@@ -357,7 +360,7 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
             if (millis() - levelingStart >= 15000) {
                 limiter.setConfig(g_limitConfig);  // limitler aktif
                 posCtrl.resetIntegral();
-                g_targetMgr.setGroundLockTarget(0.0f, 0.0f);
+                g_targetMgr.setGroundLockTarget(trimPan, trimTilt);
                 gimbalMode = MODE_STABILIZE;
                 Serial.printf("[LEVELING] Zaman asimi — Pitch=%.1f Roll=%.1f\n", headPitch, headRoll);
             }
@@ -433,25 +436,8 @@ void positionControlTask(void *params) {//pozisyon kontrol görevi
             POSITION_PERIOD_MS / 1000.0f
         );
 
-        // Limit: süre aşılırsa home konumuna (0°,0° IMU) yönlendir
-        {
-            static uint32_t limitHoldStart = 0;
-            static constexpr uint32_t LIMIT_HOLD_MS = 500;
-
-            bool atAnyLimit = limiter.isAtLimit(true, false)  || limiter.isAtLimit(true, true) ||
-                              limiter.isAtLimit(false, false) || limiter.isAtLimit(false, true);
-
-            if (atAnyLimit) {
-                if (limitHoldStart == 0) limitHoldStart = millis();
-
-                if (millis() - limitHoldStart >= LIMIT_HOLD_MS) {
-                    targetPan  = 0.0f;
-                    targetTilt = 0.0f;
-                }
-            } else {
-                limitHoldStart = 0;
-            }
-        }
+        // Limitte sadece daha fazla ilerleme engellenir (hiz limiter'da kisildi).
+        // Home'a geri surme davranisi kaldirildi.
 
 
         float stepRatePan = finalVelPan * STEPS_PER_DEGREE;//step hızına çevir ve motor sür
