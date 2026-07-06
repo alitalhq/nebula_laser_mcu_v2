@@ -42,8 +42,8 @@ struct PositionConfig {
 
     // Level trim — kafa IMU "0"i gercek yatay degilse duzeltme ofseti (derece)
     // Kamera GERCEKTEN yatayken [POS] logundaki world degeri ne ise buraya girilir
-    float level_trim_pan  = 0.0f;   // headRoll = bu deger → gercek yatay
-    float level_trim_tilt = 0.0f;   // headPitch = bu deger → gercek yatay
+    float level_trim_pan  = -4.9f;   // headRoll = bu deger → gercek yatay
+    float level_trim_tilt = 2.1f;   // headPitch = bu deger → gercek yatay
 };
 
 // CommandCombiner parametreleri
